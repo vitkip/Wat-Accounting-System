@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../includes/temple_functions.php';
 
 requireLogin();
 
@@ -14,6 +15,11 @@ $selectedYear = $_GET['year'] ?? date('Y');
 $selectedMonth = $_GET['month'] ?? date('m');
 $yearMonth = "{$selectedYear}-{$selectedMonth}";
 
+// ກວດສອບສິດຂອງຜູ້ໃຊ້
+$isSuperAdmin = ($_SESSION['is_super_admin'] ?? 0) == 1;
+$currentTempleId = getCurrentTempleId();
+$isMultiTemple = isMultiTempleEnabled();
+
 // ຊື່ເດືອນພາສາລາວ
 $monthNames = [
     '01' => 'ມັງກອນ', '02' => 'ກຸມພາ', '03' => 'ມີນາ',
@@ -22,31 +28,90 @@ $monthNames = [
     '10' => 'ຕຸລາ', '11' => 'ພະຈິກ', '12' => 'ທັນວາ'
 ];
 
-// ດຶງຂໍ້ມູນລາຍຮັບ
-$stmt = $db->prepare("
-    SELECT i.*, u.full_name 
-    FROM income i
-    LEFT JOIN users u ON i.created_by = u.id
-    WHERE DATE_FORMAT(i.date, '%Y-%m') = ?
-    ORDER BY i.date ASC
-");
-$stmt->execute([$yearMonth]);
+// ດຶງຂໍ້ມູນລາຍຮັບຕາມສິດ
+if ($isSuperAdmin) {
+    // Super Admin ເບິ່ງທຸກວັດ
+    $stmt = $db->prepare("
+        SELECT i.*, u.full_name 
+        FROM income i
+        LEFT JOIN users u ON i.created_by = u.id
+        WHERE DATE_FORMAT(i.date, '%Y-%m') = ?
+        ORDER BY i.date ASC
+    ");
+    $stmt->execute([$yearMonth]);
+} elseif ($isMultiTemple && $currentTempleId) {
+    // Admin/User ເບິ່ງສະເພາະວັດຂອງຕົນ
+    $stmt = $db->prepare("
+        SELECT i.*, u.full_name 
+        FROM income i
+        LEFT JOIN users u ON i.created_by = u.id
+        WHERE i.temple_id = ? AND DATE_FORMAT(i.date, '%Y-%m') = ?
+        ORDER BY i.date ASC
+    ");
+    $stmt->execute([$currentTempleId, $yearMonth]);
+} else {
+    // ລະບົບເກົ່າ
+    $stmt = $db->prepare("
+        SELECT i.*, u.full_name 
+        FROM income i
+        LEFT JOIN users u ON i.created_by = u.id
+        WHERE DATE_FORMAT(i.date, '%Y-%m') = ?
+        ORDER BY i.date ASC
+    ");
+    $stmt->execute([$yearMonth]);
+}
 $incomeRecords = $stmt->fetchAll();
 $totalIncome = array_sum(array_column($incomeRecords, 'amount'));
 
-// ດຶງຂໍ້ມູນລາຍຈ່າຍ
-$stmt = $db->prepare("
-    SELECT e.*, u.full_name 
-    FROM expense e
-    LEFT JOIN users u ON e.created_by = u.id
-    WHERE DATE_FORMAT(e.date, '%Y-%m') = ?
-    ORDER BY e.date ASC
-");
-$stmt->execute([$yearMonth]);
+// ດຶງຂໍ້ມູນລາຍຈ່າຍຕາມສິດ
+if ($isSuperAdmin) {
+    // Super Admin ເບິ່ງທຸກວັດ
+    $stmt = $db->prepare("
+        SELECT e.*, u.full_name 
+        FROM expense e
+        LEFT JOIN users u ON e.created_by = u.id
+        WHERE DATE_FORMAT(e.date, '%Y-%m') = ?
+        ORDER BY e.date ASC
+    ");
+    $stmt->execute([$yearMonth]);
+} elseif ($isMultiTemple && $currentTempleId) {
+    // Admin/User ເບິ່ງສະເພາະວັດຂອງຕົນ
+    $stmt = $db->prepare("
+        SELECT e.*, u.full_name 
+        FROM expense e
+        LEFT JOIN users u ON e.created_by = u.id
+        WHERE e.temple_id = ? AND DATE_FORMAT(e.date, '%Y-%m') = ?
+        ORDER BY e.date ASC
+    ");
+    $stmt->execute([$currentTempleId, $yearMonth]);
+} else {
+    // ລະບົບເກົ່າ
+    $stmt = $db->prepare("
+        SELECT e.*, u.full_name 
+        FROM expense e
+        LEFT JOIN users u ON e.created_by = u.id
+        WHERE DATE_FORMAT(e.date, '%Y-%m') = ?
+        ORDER BY e.date ASC
+    ");
+    $stmt->execute([$yearMonth]);
+}
 $expenseRecords = $stmt->fetchAll();
 $totalExpense = array_sum(array_column($expenseRecords, 'amount'));
 
 $balance = $totalIncome - $totalExpense;
+
+// ດຶງຂໍ້ມູນວັດສຳລັບສະແດງໃນລາຍງານ
+$templeInfo = null;
+if ($isSuperAdmin) {
+    $templeName = "ທຸກວັດ";
+} elseif ($isMultiTemple && $currentTempleId) {
+    $stmt = $db->prepare("SELECT temple_name, temple_name_lao FROM temples WHERE id = ?");
+    $stmt->execute([$currentTempleId]);
+    $templeInfo = $stmt->fetch();
+    $templeName = $templeInfo ? $templeInfo['temple_name_lao'] : "ວັດ";
+} else {
+    $templeName = "ວັດປ່າໜອງບົວທອງໃຕ້"; // ຄ່າເລີ່ມຕົ້ນສຳລັບລະບົບເກົ່າ
+}
 ?>
 <!DOCTYPE html>
 <html lang="lo">
@@ -91,7 +156,7 @@ $balance = $totalIncome - $totalExpense;
                 <h1 class="text-lg text-gray-600">ສັນຕິພາບ ເອກະລາດ ປະຊາທິປະໄຕ ເອກະພາບ ວັດທະນາຖາວອນ</h1>
                 <p class="text-3xl mt-2"> ⭐ ⭐ ⭐ </p>
             </div>
-            <h2 class="text-3xl font-bold text-gray-800 mb-2">ລາຍງານບັນຊີວັດ ປ່າໜອງບົວທອງໃຕ້ ເມືອງສີໂຄດຕະບອງ ນະຄອນຫຼວງວຽງຈັນ</h2>
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">ລາຍງານບັນຊີວັດ <?php echo $templeName; ?> ເມືອງສີໂຄດຕະບອງ ນະຄອນຫຼວງວຽງຈັນ</h2>
             <h2 class="text-xl font-medium text-gray-700">ປະຈຳເດືອນ <?php echo $monthNames[$selectedMonth]; ?> <?php echo $selectedYear; ?></h2>
             <p class="text-gray-600 mt-2">ວັນທີ່ພິມ: <?php echo formatDate(date('Y-m-d')); ?></p>
         </div>

@@ -4,6 +4,7 @@ header('Cache-Control: no-cache, must-revalidate');
 header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
 
 require_once '../../config.php';
+require_once '../../includes/temple_functions.php';
 
 // Temporary fix: Ensure generateCSRF function exists
 if (!function_exists('generateCSRF')) {
@@ -25,6 +26,13 @@ if (!isAdmin()) {
 
 $pageTitle = 'ຈັດການໝວດໝູ່ລາຍຮັບ';
 $db = getDB();
+
+// ດຶງ temple_id ຂອງຜູ້ໃຊ້ປະຈຸບັນ
+$currentTempleId = null;
+$isMultiTemple = function_exists('isMultiTempleEnabled') && isMultiTempleEnabled();
+if ($isMultiTemple && function_exists('getCurrentTempleId')) {
+    $currentTempleId = getCurrentTempleId();
+}
 
 // ລຶບໝວດໝູ່
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
@@ -56,20 +64,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     redirect('/modules/categories/income_list.php');
 }
 
-// ດຶງຂໍ້ມູນ
+// ດຶງຂໍ້ມູນ (ຕາມ temple_id)
 try {
     // Debug: ກວດສອບວ່າ query ດຶງຂໍ້ມູນໄດ້ບໍ່
-    error_log("🔍 Fetching income categories at: " . date('Y-m-d H:i:s'));
+    error_log("🔍 Fetching income categories at: " . date('Y-m-d H:i:s') . " for temple_id: " . ($currentTempleId ?? 'NULL'));
     
-    $stmt = $db->query("
-        SELECT ic.id, ic.name, ic.description, ic.created_at,
-               COUNT(i.id) as usage_count,
-               COALESCE(SUM(i.amount), 0) as total_amount
-        FROM income_categories ic
-        LEFT JOIN income i ON ic.name = i.category
-        GROUP BY ic.id, ic.name, ic.description, ic.created_at
-        ORDER BY ic.name ASC
-    ");
+    if ($currentTempleId) {
+        // ດຶງໝວດໝູ່ຂອງວັດນີ້ເທົ່ານັ້ນ
+        $stmt = $db->prepare("
+            SELECT ic.id, ic.name, ic.description, ic.created_at,
+                   COUNT(i.id) as usage_count,
+                   COALESCE(SUM(i.amount), 0) as total_amount
+            FROM income_categories ic
+            LEFT JOIN income i ON ic.name = i.category AND i.temple_id = ic.temple_id
+            WHERE ic.temple_id = ?
+            GROUP BY ic.id, ic.name, ic.description, ic.created_at
+            ORDER BY ic.name ASC
+        ");
+        $stmt->execute([$currentTempleId]);
+    } else {
+        // ຖ້າບໍ່ມີ multi-temple ໃຫ້ດຶງທັງໝົດ
+        $stmt = $db->query("
+            SELECT ic.id, ic.name, ic.description, ic.created_at,
+                   COUNT(i.id) as usage_count,
+                   COALESCE(SUM(i.amount), 0) as total_amount
+            FROM income_categories ic
+            LEFT JOIN income i ON ic.name = i.category
+            GROUP BY ic.id, ic.name, ic.description, ic.created_at
+            ORDER BY ic.name ASC
+        ");
+    }
+    
     $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Debug: ລົງບັນທຶກຈຳນວນທີ່ດຶງໄດ້

@@ -5,12 +5,18 @@
  */
 
 require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../includes/temple_functions.php';
 
 requireLogin();
 
 $db = getDB();
 
 $selectedYear = $_GET['year'] ?? date('Y');
+
+// ກວດສອບສິດຂອງຜູ້ໃຊ້
+$isSuperAdmin = ($_SESSION['is_super_admin'] ?? 0) == 1;
+$currentTempleId = getCurrentTempleId();
+$isMultiTemple = isMultiTempleEnabled();
 
 // ຊື່ເດືອນພາສາລາວ
 $monthNames = [
@@ -20,7 +26,7 @@ $monthNames = [
     '10' => 'ຕຸລາ', '11' => 'ພະຈິກ', '12' => 'ທັນວາ'
 ];
 
-// ດຶງຂໍ້ມູນລາຍຮັບ/ລາຍຈ່າຍ ແຕ່ລະເດືອນ
+// ດຶງຂໍ້ມູນລາຍຮັບ/ລາຍຈ່າຍ ແຕ່ລະເດືອນຕາມສິດ
 $monthlyData = [];
 $yearTotalIncome = 0;
 $yearTotalExpense = 0;
@@ -29,22 +35,60 @@ for ($m = 1; $m <= 12; $m++) {
     $month = str_pad($m, 2, '0', STR_PAD_LEFT);
     $yearMonth = "{$selectedYear}-{$month}";
     
-    // ລາຍຮັບ
-    $stmt = $db->prepare("
-        SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count 
-        FROM income 
-        WHERE DATE_FORMAT(date, '%Y-%m') = ?
-    ");
-    $stmt->execute([$yearMonth]);
+    // ລາຍຮັບຕາມສິດ
+    if ($isSuperAdmin) {
+        // Super Admin ເບິ່ງທຸກວັດ
+        $stmt = $db->prepare("
+            SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count 
+            FROM income 
+            WHERE DATE_FORMAT(date, '%Y-%m') = ?
+        ");
+        $stmt->execute([$yearMonth]);
+    } elseif ($isMultiTemple && $currentTempleId) {
+        // Admin/User ເບິ່ງສະເພາະວັດຂອງຕົນ
+        $stmt = $db->prepare("
+            SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count 
+            FROM income 
+            WHERE temple_id = ? AND DATE_FORMAT(date, '%Y-%m') = ?
+        ");
+        $stmt->execute([$currentTempleId, $yearMonth]);
+    } else {
+        // ລະບົບເກົ່າ
+        $stmt = $db->prepare("
+            SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count 
+            FROM income 
+            WHERE DATE_FORMAT(date, '%Y-%m') = ?
+        ");
+        $stmt->execute([$yearMonth]);
+    }
     $incomeData = $stmt->fetch();
     
-    // ລາຍຈ່າຍ
-    $stmt = $db->prepare("
-        SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count 
-        FROM expense 
-        WHERE DATE_FORMAT(date, '%Y-%m') = ?
-    ");
-    $stmt->execute([$yearMonth]);
+    // ລາຍຈ່າຍຕາມສິດ
+    if ($isSuperAdmin) {
+        // Super Admin ເບິ່ງທຸກວັດ
+        $stmt = $db->prepare("
+            SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count 
+            FROM expense 
+            WHERE DATE_FORMAT(date, '%Y-%m') = ?
+        ");
+        $stmt->execute([$yearMonth]);
+    } elseif ($isMultiTemple && $currentTempleId) {
+        // Admin/User ເບິ່ງສະເພາະວັດຂອງຕົນ
+        $stmt = $db->prepare("
+            SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count 
+            FROM expense 
+            WHERE temple_id = ? AND DATE_FORMAT(date, '%Y-%m') = ?
+        ");
+        $stmt->execute([$currentTempleId, $yearMonth]);
+    } else {
+        // ລະບົບເກົ່າ
+        $stmt = $db->prepare("
+            SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count 
+            FROM expense 
+            WHERE DATE_FORMAT(date, '%Y-%m') = ?
+        ");
+        $stmt->execute([$yearMonth]);
+    }
     $expenseData = $stmt->fetch();
     
     $income = floatval($incomeData['total']);
@@ -67,26 +111,85 @@ for ($m = 1; $m <= 12; $m++) {
 
 $yearBalance = $yearTotalIncome - $yearTotalExpense;
 
-// ດຶງຂໍ້ມູນຕາມໝວດໝູ່ສຳລັບປີນີ້
-$stmt = $db->prepare("
-    SELECT category, COALESCE(SUM(amount), 0) as total, COUNT(*) as count
-    FROM income
-    WHERE YEAR(date) = ?
-    GROUP BY category
-    ORDER BY total DESC
-");
-$stmt->execute([$selectedYear]);
+// ດຶງຂໍ້ມູນຕາມໝວດໝູ່ສຳລັບປີນີ້ຕາມສິດ
+if ($isSuperAdmin) {
+    // Super Admin ເບິ່ງທຸກວັດ
+    $stmt = $db->prepare("
+        SELECT category, COALESCE(SUM(amount), 0) as total, COUNT(*) as count
+        FROM income
+        WHERE YEAR(date) = ?
+        GROUP BY category
+        ORDER BY total DESC
+    ");
+    $stmt->execute([$selectedYear]);
+} elseif ($isMultiTemple && $currentTempleId) {
+    // Admin/User ເບິ່ງສະເພາະວັດຂອງຕົນ
+    $stmt = $db->prepare("
+        SELECT category, COALESCE(SUM(amount), 0) as total, COUNT(*) as count
+        FROM income
+        WHERE temple_id = ? AND YEAR(date) = ?
+        GROUP BY category
+        ORDER BY total DESC
+    ");
+    $stmt->execute([$currentTempleId, $selectedYear]);
+} else {
+    // ລະບົບເກົ່າ
+    $stmt = $db->prepare("
+        SELECT category, COALESCE(SUM(amount), 0) as total, COUNT(*) as count
+        FROM income
+        WHERE YEAR(date) = ?
+        GROUP BY category
+        ORDER BY total DESC
+    ");
+    $stmt->execute([$selectedYear]);
+}
 $incomeByCategory = $stmt->fetchAll();
 
-$stmt = $db->prepare("
-    SELECT category, COALESCE(SUM(amount), 0) as total, COUNT(*) as count
-    FROM expense
-    WHERE YEAR(date) = ?
-    GROUP BY category
-    ORDER BY total DESC
-");
-$stmt->execute([$selectedYear]);
+if ($isSuperAdmin) {
+    // Super Admin ເບິ່ງທຸກວັດ
+    $stmt = $db->prepare("
+        SELECT category, COALESCE(SUM(amount), 0) as total, COUNT(*) as count
+        FROM expense
+        WHERE YEAR(date) = ?
+        GROUP BY category
+        ORDER BY total DESC
+    ");
+    $stmt->execute([$selectedYear]);
+} elseif ($isMultiTemple && $currentTempleId) {
+    // Admin/User ເບິ່ງສະເພາະວັດຂອງຕົນ
+    $stmt = $db->prepare("
+        SELECT category, COALESCE(SUM(amount), 0) as total, COUNT(*) as count
+        FROM expense
+        WHERE temple_id = ? AND YEAR(date) = ?
+        GROUP BY category
+        ORDER BY total DESC
+    ");
+    $stmt->execute([$currentTempleId, $selectedYear]);
+} else {
+    // ລະບົບເກົ່າ
+    $stmt = $db->prepare("
+        SELECT category, COALESCE(SUM(amount), 0) as total, COUNT(*) as count
+        FROM expense
+        WHERE YEAR(date) = ?
+        GROUP BY category
+        ORDER BY total DESC
+    ");
+    $stmt->execute([$selectedYear]);
+}
 $expenseByCategory = $stmt->fetchAll();
+
+// ດຶງຂໍ້ມູນວັດສຳລັບສະແດງໃນລາຍງານ
+$templeInfo = null;
+if ($isSuperAdmin) {
+    $templeName = "ທຸກວັດ";
+} elseif ($isMultiTemple && $currentTempleId) {
+    $stmt = $db->prepare("SELECT temple_name, temple_name_lao FROM temples WHERE id = ?");
+    $stmt->execute([$currentTempleId]);
+    $templeInfo = $stmt->fetch();
+    $templeName = $templeInfo ? $templeInfo['temple_name_lao'] : "ວັດ";
+} else {
+    $templeName = "ວັດປ່າໜອງບົວທອງໃຕ້"; // ຄ່າເລີ່ມຕົ້ນສຳລັບລະບົບເກົ່າ
+}
 ?>
 <!DOCTYPE html>
 <html lang="lo">
@@ -142,7 +245,7 @@ $expenseByCategory = $stmt->fetchAll();
                 <p class="text-3xl mt-2"> ⭐ ⭐ ⭐ </p>
             </div>
             <h2 class="text-3xl font-bold text-gray-800 mb-2">ລາຍງານສະຫຼຸບບັນຊີປະຈຳປີ</h2>
-            <h2 class="text-2xl font-bold text-blue-700 mb-2">ວັດປ່າໜອງບົວທອງໃຕ້ ເມືອງສີໂຄດຕະບອງ ນະຄອນຫຼວງວຽງຈັນ</h2>
+            <h2 class="text-2xl font-bold text-blue-700 mb-2">ວັດ<?php echo $templeName; ?> ເມືອງສີໂຄດຕະບອງ ນະຄອນຫຼວງວຽງຈັນ</h2>
             <h3 class="text-xl font-medium text-gray-700">ປະຈຳປີ <?php echo $selectedYear; ?></h3>
             <p class="text-gray-600 mt-2">ວັນທີ່ພິມ: <?php echo formatDate(date('Y-m-d')); ?> | ເວລາ: <?php echo date('H:i'); ?> ໂມງ</p>
         </div>
@@ -245,7 +348,7 @@ $expenseByCategory = $stmt->fetchAll();
                             </td>
                             <td class="border border-gray-300 px-4 py-3 text-center">
                                 <?php if ($data['balance'] > 0): ?>
-                                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">กຳໄລ</span>
+                                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">ກຳໄລ</span>
                                 <?php elseif ($data['balance'] < 0): ?>
                                     <span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">ຂາດທຶນ</span>
                                 <?php else: ?>
@@ -275,7 +378,7 @@ $expenseByCategory = $stmt->fetchAll();
                             </td>
                             <td class="border border-gray-300 px-4 py-4 text-center">
                                 <?php if ($yearBalance > 0): ?>
-                                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">กຳໄລ</span>
+                                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">ກຳໄລ</span>
                                 <?php else: ?>
                                     <span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm">ຂາດທຶນ</span>
                                 <?php endif; ?>

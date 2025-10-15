@@ -5,26 +5,59 @@
  */
 
 require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../includes/temple_functions.php';
 require_once __DIR__ . '/../../includes/header.php';
 
 requireLogin();
 
 $db = getDB();
 
+// ກວດສອບສິດຂອງຜູ້ໃຊ້ປັດຈຸບັນ
+$currentUser = $_SESSION;
+$isSuperAdmin = ($currentUser['is_super_admin'] ?? 0) == 1;
+$currentTempleId = getCurrentTempleId();
+$isMultiTemple = isMultiTempleEnabled();
+
 // ກຳນົດປີ ແລະ ເດືອນ
 $selectedYear = $_GET['year'] ?? date('Y');
 $selectedMonth = $_GET['month'] ?? date('m');
 
-// ດຶງປີທີ່ມີຂໍ້ມູນ
-$stmt = $db->query("
-    SELECT DISTINCT YEAR(date) as year 
-    FROM (
-        SELECT date FROM income 
-        UNION 
-        SELECT date FROM expense
-    ) as dates 
-    ORDER BY year DESC
-");
+// ດຶງປີທີ່ມີຂໍ້ມູນຕາມສິດ
+if ($isSuperAdmin) {
+    // Super Admin ເບິ່ງທຸກວັດ
+    $stmt = $db->query("
+        SELECT DISTINCT YEAR(date) as year 
+        FROM (
+            SELECT date FROM income 
+            UNION 
+            SELECT date FROM expense
+        ) as dates 
+        ORDER BY year DESC
+    ");
+} elseif ($isMultiTemple && $currentTempleId) {
+    // Admin/User ເບິ່ງສະເພາະວັດຂອງຕົນ
+    $stmt = $db->prepare("
+        SELECT DISTINCT YEAR(date) as year 
+        FROM (
+            SELECT date FROM income WHERE temple_id = ?
+            UNION 
+            SELECT date FROM expense WHERE temple_id = ?
+        ) as dates 
+        ORDER BY year DESC
+    ");
+    $stmt->execute([$currentTempleId, $currentTempleId]);
+} else {
+    // ລະບົບເກົ່າບໍ່ມີ multi-temple
+    $stmt = $db->query("
+        SELECT DISTINCT YEAR(date) as year 
+        FROM (
+            SELECT date FROM income 
+            UNION 
+            SELECT date FROM expense
+        ) as dates 
+        ORDER BY year DESC
+    ");
+}
 $years = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
 // ຖ້າບໍ່ມີຂໍ້ມູນໃຫ້ໃຊ້ປີປັດຈຸບັນ
@@ -40,40 +73,108 @@ for ($m = 1; $m <= 12; $m++) {
     $month = str_pad($m, 2, '0', STR_PAD_LEFT);
     $yearMonth = "{$selectedYear}-{$month}";
     
-    // ລາຍຮັບ
-    $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE DATE_FORMAT(date, '%Y-%m') = ?");
-    $stmt->execute([$yearMonth]);
+    // ລາຍຮັບຕາມສິດ
+    if ($isSuperAdmin) {
+        // Super Admin ເບິ່ງທຸກວັດ
+        $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE DATE_FORMAT(date, '%Y-%m') = ?");
+        $stmt->execute([$yearMonth]);
+    } elseif ($isMultiTemple && $currentTempleId) {
+        // Admin/User ເບິ່ງສະເພາະວັດຂອງຕົນ
+        $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE temple_id = ? AND DATE_FORMAT(date, '%Y-%m') = ?");
+        $stmt->execute([$currentTempleId, $yearMonth]);
+    } else {
+        // ລະບົບເກົ່າ
+        $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE DATE_FORMAT(date, '%Y-%m') = ?");
+        $stmt->execute([$yearMonth]);
+    }
     $monthlyIncome[$m] = $stmt->fetch()['total'];
     
-    // ລາຍຈ່າຍ
-    $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM expense WHERE DATE_FORMAT(date, '%Y-%m') = ?");
-    $stmt->execute([$yearMonth]);
+    // ລາຍຈ່າຍຕາມສິດ
+    if ($isSuperAdmin) {
+        // Super Admin ເບິ່ງທຸກວັດ
+        $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM expense WHERE DATE_FORMAT(date, '%Y-%m') = ?");
+        $stmt->execute([$yearMonth]);
+    } elseif ($isMultiTemple && $currentTempleId) {
+        // Admin/User ເບິ່ງສະເພາະວັດຂອງຕົນ
+        $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM expense WHERE temple_id = ? AND DATE_FORMAT(date, '%Y-%m') = ?");
+        $stmt->execute([$currentTempleId, $yearMonth]);
+    } else {
+        // ລະບົບເກົ່າ
+        $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM expense WHERE DATE_FORMAT(date, '%Y-%m') = ?");
+        $stmt->execute([$yearMonth]);
+    }
     $monthlyExpense[$m] = $stmt->fetch()['total'];
 }
 
 // ລາຍງານຕາມໝວດໝູ່ (ເດືອນທີ່ເລືອກ)
 $yearMonth = "{$selectedYear}-{$selectedMonth}";
 
-// ລາຍຮັບຕາມໝວດໝູ່
-$stmt = $db->prepare("
-    SELECT category, SUM(amount) as total, COUNT(*) as count
-    FROM income 
-    WHERE DATE_FORMAT(date, '%Y-%m') = ?
-    GROUP BY category
-    ORDER BY total DESC
-");
-$stmt->execute([$yearMonth]);
+// ລາຍຮັບຕາມໝວດໝູ່ຕາມສິດ
+if ($isSuperAdmin) {
+    // Super Admin ເບິ່ງທຸກວັດ
+    $stmt = $db->prepare("
+        SELECT category, SUM(amount) as total, COUNT(*) as count
+        FROM income 
+        WHERE DATE_FORMAT(date, '%Y-%m') = ?
+        GROUP BY category
+        ORDER BY total DESC
+    ");
+    $stmt->execute([$yearMonth]);
+} elseif ($isMultiTemple && $currentTempleId) {
+    // Admin/User ເບິ່ງສະເພາະວັດຂອງຕົນ
+    $stmt = $db->prepare("
+        SELECT category, SUM(amount) as total, COUNT(*) as count
+        FROM income 
+        WHERE temple_id = ? AND DATE_FORMAT(date, '%Y-%m') = ?
+        GROUP BY category
+        ORDER BY total DESC
+    ");
+    $stmt->execute([$currentTempleId, $yearMonth]);
+} else {
+    // ລະບົບເກົ່າ
+    $stmt = $db->prepare("
+        SELECT category, SUM(amount) as total, COUNT(*) as count
+        FROM income 
+        WHERE DATE_FORMAT(date, '%Y-%m') = ?
+        GROUP BY category
+        ORDER BY total DESC
+    ");
+    $stmt->execute([$yearMonth]);
+}
 $incomeByCategory = $stmt->fetchAll();
 
-// ລາຍຈ່າຍຕາມໝວດໝູ່
-$stmt = $db->prepare("
-    SELECT category, SUM(amount) as total, COUNT(*) as count
-    FROM expense 
-    WHERE DATE_FORMAT(date, '%Y-%m') = ?
-    GROUP BY category
-    ORDER BY total DESC
-");
-$stmt->execute([$yearMonth]);
+// ລາຍຈ່າຍຕາມໝວດໝູ່ຕາມສິດ
+if ($isSuperAdmin) {
+    // Super Admin ເບິ່ງທຸກວັດ
+    $stmt = $db->prepare("
+        SELECT category, SUM(amount) as total, COUNT(*) as count
+        FROM expense 
+        WHERE DATE_FORMAT(date, '%Y-%m') = ?
+        GROUP BY category
+        ORDER BY total DESC
+    ");
+    $stmt->execute([$yearMonth]);
+} elseif ($isMultiTemple && $currentTempleId) {
+    // Admin/User ເບິ່ງສະເພາະວັດຂອງຕົນ
+    $stmt = $db->prepare("
+        SELECT category, SUM(amount) as total, COUNT(*) as count
+        FROM expense 
+        WHERE temple_id = ? AND DATE_FORMAT(date, '%Y-%m') = ?
+        GROUP BY category
+        ORDER BY total DESC
+    ");
+    $stmt->execute([$currentTempleId, $yearMonth]);
+} else {
+    // ລະບົບເກົ່າ
+    $stmt = $db->prepare("
+        SELECT category, SUM(amount) as total, COUNT(*) as count
+        FROM expense 
+        WHERE DATE_FORMAT(date, '%Y-%m') = ?
+        GROUP BY category
+        ORDER BY total DESC
+    ");
+    $stmt->execute([$yearMonth]);
+}
 $expenseByCategory = $stmt->fetchAll();
 
 // ສະຫຼຸບລວມ

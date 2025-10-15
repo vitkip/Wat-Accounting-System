@@ -27,7 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $db = getDB();
-            $sql = "SELECT id, username, password, full_name, role FROM users WHERE username = :username LIMIT 1";
+            $sql = "SELECT id, username, password, full_name, role, temple_id, is_super_admin 
+                    FROM users WHERE username = :username LIMIT 1";
             $stmt = $db->prepare($sql);
             $stmt->execute([':username' => $username]);
             $user = $stmt->fetch();
@@ -41,6 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['full_name'] = $user['full_name'];
                 $_SESSION['role'] = $user['role'];
+                $_SESSION['temple_id'] = $user['temple_id'];
+                $_SESSION['is_super_admin'] = $user['is_super_admin'];
                 $_SESSION['last_activity'] = time();
                 
                 // ບັນທຶກ audit log
@@ -150,6 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <p class="font-medium mb-2">ຂໍ້ມູນທົດລອງ:</p>
                         <p><strong>ແອດມິນ:</strong> admin / admin123</p>
                         <p><strong>ຜູ້ໃຊ້:</strong> user1 / admin123</p>
+                        <p><strong>ສົນໃຈລົງທະບຽນໃຊ້ລະບົບ:</strong> <a href="https://wa.me/8562077772338" target="_blank" class="text-green-600 hover:text-green-700 inline-flex items-center gap-1"><span class="text-xl">📱</span> WhatsApp</a></p>
                     </div>
                 </div>
             </div>

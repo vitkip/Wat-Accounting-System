@@ -12,7 +12,7 @@ define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
 
 // ການຕັ້ງຄ່າລະບົບ
-define('SITE_NAME', 'ວັດປ່າໜອງບົວທອງໃຕ້');
+define('SITE_NAME', 'ບັນຊີວັດ');
 define('BASE_URL', 'http://localhost/watsystem');
 define('TIMEZONE', 'Asia/Vientiane');
 
@@ -23,6 +23,18 @@ define('PASSWORD_MIN_LENGTH', 6);
 
 // ຕັ້ງເຂດເວລາ
 date_default_timezone_set(TIMEZONE);
+
+// ໂຫຼດຟັງຊັນຈັດການວັດກ່ອນ ເພື່ອໃຫ້ສາມາດໃຊ້ງານໄດ້ທັນທີ
+require_once __DIR__ . '/includes/temple_functions.php';
+
+// Set timezone based on temple setting or default
+if (function_exists('getCurrentTempleId') && function_exists('getTempleSetting')) {
+    $currentTempleId = getCurrentTempleId();
+    if ($currentTempleId) {
+        $timezone = getTempleSetting($currentTempleId, 'timezone', 'Asia/Vientiane');
+        date_default_timezone_set($timezone);
+    }
+}
 
 // ເລີ່ມ Session ກ່ອນການຕັ້ງຄ່າ
 if (session_status() === PHP_SESSION_NONE) {
@@ -144,24 +156,51 @@ function logActivity($userId, $action, $tableName, $recordId, $description = nul
 
 // ຟັງຊັນຈັດຮູບແບບເງິນກີບ
 function formatMoney($amount) {
-    return number_format($amount, 0, ',', '.') . ' ກີບ';
+    $symbol = 'ກີບ'; // Default symbol
+    if (function_exists('getCurrentTempleId') && function_exists('getTempleSetting')) {
+        $currentTempleId = getCurrentTempleId();
+        if ($currentTempleId) {
+            // ດຶງສັນຍາລັກຈາກການຕັ້ງຄ່າຂອງວັດ, ຖ້າບໍ່ມີໃຫ້ໃຊ້ 'ກີບ'
+            $symbol = getTempleSetting($currentTempleId, 'currency_symbol', 'ກີບ');
+        }
+    }
+    return number_format($amount, 0, ',', '.') . ' ' . e($symbol);
 }
 
 // ຟັງຊັນຈັດຮູບແບບວັນທີ່
 function formatDate($date) {
-    $months = [
-        '01' => 'ມັງກອນ', '02' => 'ກຸມພາ', '03' => 'ມີນາ',
-        '04' => 'ເມສາ', '05' => 'ພຶດສະພາ', '06' => 'ມິຖຸນາ',
-        '07' => 'ກໍລະກົດ', '08' => 'ສິງຫາ', '09' => 'ກັນຍາ',
-        '10' => 'ຕຸລາ', '11' => 'ພະຈິກ', '12' => 'ທັນວາ'
-    ];
-    
-    $dateObj = new DateTime($date);
-    $day = $dateObj->format('d');
-    $month = $months[$dateObj->format('m')];
-    $year = $dateObj->format('Y');
-    
-    return "{$day} {$month} {$year}";
+    $format = 'd/m/Y'; // Default format
+    if (function_exists('getCurrentTempleId') && function_exists('getTempleSetting')) {
+        $currentTempleId = getCurrentTempleId();
+        if ($currentTempleId) {
+            // ດຶງຮູບແບບວັນທີຈາກການຕັ້ງຄ່າຂອງວັດ
+            $format = getTempleSetting($currentTempleId, 'date_format', 'd/m/Y');
+        }
+    }
+
+    if (empty($date)) {
+        return '';
+    }
+
+    try {
+        $dateObj = new DateTime($date);
+        // ກວດສອບຖ້າຕ້ອງການສະແດງຊື່ເດືອນເປັນພາສາລາວ (ແບບພິເສດ)
+        if ($format === 'd F Y') {
+            $months = [
+                '01' => 'ມັງກອນ', '02' => 'ກຸມພາ', '03' => 'ມີນາ',
+                '04' => 'ເມສາ', '05' => 'ພຶດສະພາ', '06' => 'ມິຖຸນາ',
+                '07' => 'ກໍລະກົດ', '08' => 'ສິງຫາ', '09' => 'ກັນຍາ',
+                '10' => 'ຕຸລາ', '11' => 'ພະຈິກ', '12' => 'ທັນວາ'
+            ];
+            $day = $dateObj->format('d');
+            $month = $months[$dateObj->format('m')];
+            $year = $dateObj->format('Y');
+            return "{$day} {$month} {$year}";
+        }
+        return $dateObj->format($format);
+    } catch (Exception $e) {
+        return $date; // Return original date if format fails
+    }
 }
 
 // ຟັງຊັນສົ່ງຂໍ້ຄວາມແຈ້ງເຕືອນ
@@ -201,7 +240,13 @@ if (isLoggedIn()) {
 // ສ້າງ alias ສຳລັບ CSRF functions ເພື່ອຄວາມສະດວກ
 if (!function_exists('generateCSRF')) {
     function generateCSRF() {
-        return generateCSRFToken();
+        return generateCsrfToken();
+    }
+}
+
+if (!function_exists('verifyCsrfToken')) {
+    function verifyCsrfToken($token) {
+        return checkCSRF($token);
     }
 }
 
@@ -213,3 +258,21 @@ if (!function_exists('checkCSRFToken')) {
 
 // ໂຫຼດຟັງຊັນ CSRF ກ່ອນທີ່ຈະໃຊ້ງານ
 require_once __DIR__ . '/includes/csrf.php';
+
+// ຟັງຊັນດຶງຂໍ້ມູນຜູ້ໃຊ້ປະຈຸບັນ
+function getCurrentUser() {
+    if (!isLoggedIn()) {
+        return null;
+    }
+    
+    static $currentUser = null;
+    
+    if ($currentUser === null) {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $currentUser = $stmt->fetch();
+    }
+    
+    return $currentUser;
+}

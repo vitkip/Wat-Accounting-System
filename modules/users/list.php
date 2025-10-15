@@ -5,15 +5,46 @@
  */
 
 require_once __DIR__ . '/../../config.php';
-require_once __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../includes/temple_functions.php';
 
 requireAdmin();
 
 $db = getDB();
 
-// ດຶງຂໍ້ມູນຜູ້ໃຊ້
-$stmt = $db->query("SELECT * FROM users ORDER BY created_at DESC");
+// ກວດສອບສິດຂອງຜູ້ໃຊ້ປັດຈຸບັນ
+$currentUser = $_SESSION;
+$isSuperAdmin = ($currentUser['is_super_admin'] ?? 0) == 1;
+$currentTempleId = getCurrentTempleId();
+$isMultiTemple = isMultiTempleEnabled();
+
+// ດຶງຂໍ້ມູນຜູ້ໃຊ້ຕາມສິດ
+if ($isSuperAdmin) {
+    // Super admin ເຫັນຜູ້ໃຊ້ທັງໝົດ
+    $sql = "SELECT u.*, t.temple_name, t.temple_name_lao 
+            FROM users u 
+            LEFT JOIN temples t ON u.temple_id = t.id 
+            ORDER BY u.created_at DESC";
+    $stmt = $db->query($sql);
+} else {
+    // Admin ທົ່ວໄປເຫັນສະເພາະຜູ້ໃຊ້ໃນວັດຂອງຕົນ
+    if ($isMultiTemple && $currentTempleId) {
+        $sql = "SELECT u.*, t.temple_name, t.temple_name_lao 
+                FROM users u 
+                LEFT JOIN temples t ON u.temple_id = t.id 
+                WHERE u.temple_id = :temple_id 
+                ORDER BY u.created_at DESC";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([':temple_id' => $currentTempleId]);
+    } else {
+        $sql = "SELECT u.*, NULL as temple_name, NULL as temple_name_lao 
+                FROM users u 
+                ORDER BY u.created_at DESC";
+        $stmt = $db->query($sql);
+    }
+}
 $users = $stmt->fetchAll();
+
+require_once __DIR__ . '/../../includes/header.php';
 
 ?>
 
@@ -45,6 +76,9 @@ $users = $stmt->fetchAll();
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ລຳດັບ</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຊື່ຜູ້ໃຊ້</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຊື່ເຕັມ</th>
+                    <?php if ($isSuperAdmin): ?>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ວັດ</th>
+                    <?php endif; ?>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ສິດ</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ວັນທີ່ສ້າງ</th>
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ການຈັດການ</th>
@@ -53,7 +87,7 @@ $users = $stmt->fetchAll();
             <tbody class="bg-white divide-y divide-gray-200">
                 <?php if (empty($users)): ?>
                 <tr>
-                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                    <td colspan="<?php echo $isSuperAdmin ? 7 : 6; ?>" class="px-6 py-8 text-center text-gray-500">
                         ບໍ່ມີຂໍ້ມູນຜູ້ໃຊ້
                     </td>
                 </tr>
@@ -65,10 +99,28 @@ $users = $stmt->fetchAll();
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             <?php echo e($user['username']); ?>
+                            <?php if ($user['is_super_admin'] == 1): ?>
+                                <span class="ml-2 px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                                    Super Admin
+                                </span>
+                            <?php endif; ?>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             <?php echo e($user['full_name']); ?>
                         </td>
+                        <?php if ($isSuperAdmin): ?>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            <?php 
+                            if ($user['is_super_admin'] == 1) {
+                                echo '<span class="text-purple-600 font-medium">ທຸກວັດ</span>';
+                            } elseif ($user['temple_name_lao'] || $user['temple_name']) {
+                                echo e($user['temple_name_lao'] ?: $user['temple_name']);
+                            } else {
+                                echo '<span class="text-gray-400">-</span>';
+                            }
+                            ?>
+                        </td>
+                        <?php endif; ?>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <?php if ($user['role'] === 'admin'): ?>
                                 <span class="px-3 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
@@ -86,7 +138,7 @@ $users = $stmt->fetchAll();
                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                             <a href="<?php echo BASE_URL; ?>/modules/users/edit.php?id=<?php echo $user['id']; ?>" 
                                class="text-blue-600 hover:text-blue-900 mr-3">ແກ້ໄຂ</a>
-                            <?php if ($user['id'] != $_SESSION['user_id']): ?>
+                            <?php if ($user['id'] != $_SESSION['user_id'] && !($user['is_super_admin'] == 1 && !$isSuperAdmin)): ?>
                                 <a href="#" 
                                    onclick="confirmDeleteUser(<?php echo $user['id']; ?>); return false;"
                                    class="text-red-600 hover:text-red-900">ລຶບ</a>

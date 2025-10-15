@@ -5,11 +5,18 @@
  */
 
 require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../includes/temple_functions.php';
 
 requireAdmin();
 
 $db = getDB();
 $id = $_GET['id'] ?? 0;
+
+// ກວດສອບສິດຂອງຜູ້ໃຊ້ປັດຈຸບັນ
+$currentUser = $_SESSION;
+$isSuperAdmin = ($currentUser['is_super_admin'] ?? 0) == 1;
+$currentTempleId = getCurrentTempleId();
+$isMultiTemple = isMultiTempleEnabled();
 
 // ບໍ່ສາມາດລຶບຕົວເອງໄດ້
 if ($id == $_SESSION['user_id']) {
@@ -18,12 +25,28 @@ if ($id == $_SESSION['user_id']) {
     exit();
 }
 
-// ດຶງຂໍ້ມູນເພື່ອບັນທຶກ audit log
+// ດຶງຂໍ້ມູນເພື່ອບັນທຶກ audit log ແລະ ກວດສອບສິດ
 $stmt = $db->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
 $stmt->execute([':id' => $id]);
 $user = $stmt->fetch();
 
 if ($user) {
+    // ກວດສອບສິດໃນການລຶບ
+    if (!$isSuperAdmin) {
+        // Admin ທົ່ວໄປລຶບໄດ້ສະເພາະຜູ້ໃຊ້ໃນວັດຂອງຕົນ
+        if ($isMultiTemple && $user['temple_id'] != $currentTempleId) {
+            setFlashMessage('ທ່ານບໍ່ມີສິດລຶບຜູ້ໃຊ້ນີ້', 'error');
+            header('Location: ' . BASE_URL . '/modules/users/list.php');
+            exit();
+        }
+        // ບໍ່ສາມາດລຶບ Super Admin
+        if ($user['is_super_admin'] == 1) {
+            setFlashMessage('ທ່ານບໍ່ມີສິດລຶບ Super Admin', 'error');
+            header('Location: ' . BASE_URL . '/modules/users/list.php');
+            exit();
+        }
+    }
+    
     try {
         // ກວດສອບວ່າຜູ້ໃຊ້ນີ້ມີການບັນທຶກຂໍ້ມູນຫຼືບໍ່
         $stmt = $db->prepare("SELECT COUNT(*) as count FROM income WHERE created_by = :user_id");

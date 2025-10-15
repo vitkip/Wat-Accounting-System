@@ -5,11 +5,18 @@
  */
 
 require_once __DIR__ . '/../../config.php';
-require_once __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../includes/temple_functions.php';
 
 requireLogin();
 
 $db = getDB();
+
+// ດຶງ temple_id ຂອງຜູ້ໃຊ້ປະຈຸບັນ (ຖ້າລະບົບ multi-temple ເປີດໃຊ້)
+$currentTempleId = null;
+$isMultiTemple = function_exists('isMultiTempleEnabled') && isMultiTempleEnabled();
+if ($isMultiTemple && function_exists('getCurrentTempleId')) {
+    $currentTempleId = getCurrentTempleId();
+}
 
 // Pagination
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -22,34 +29,43 @@ $category = $_GET['category'] ?? '';
 $dateFrom = $_GET['date_from'] ?? '';
 $dateTo = $_GET['date_to'] ?? '';
 
-// Build Query
-$where = ['1=1'];
+// Build Query (ເພີ່ມ filter temple_id ຖ້າມີ - ໃຊ້ i.temple_id ເພື່ອປ້ອງກັນ ambiguous column)
+$where = [];
 $params = [];
 
+if ($currentTempleId) {
+    $where[] = 'i.temple_id = :temple_id';
+    $params[':temple_id'] = $currentTempleId;
+}
+
+if (empty($where)) {
+    $where[] = '1=1'; // ຖ້າບໍ່ມີ filter ໃດໆ
+}
+
 if (!empty($search)) {
-    $where[] = "description LIKE :search";
+    $where[] = "i.description LIKE :search";
     $params[':search'] = "%{$search}%";
 }
 
 if (!empty($category)) {
-    $where[] = "category = :category";
+    $where[] = "i.category = :category";
     $params[':category'] = $category;
 }
 
 if (!empty($dateFrom)) {
-    $where[] = "date >= :date_from";
+    $where[] = "i.date >= :date_from";
     $params[':date_from'] = $dateFrom;
 }
 
 if (!empty($dateTo)) {
-    $where[] = "date <= :date_to";
+    $where[] = "i.date <= :date_to";
     $params[':date_to'] = $dateTo;
 }
 
 $whereClause = implode(' AND ', $where);
 
 // Get Total
-$stmt = $db->prepare("SELECT COUNT(*) as total FROM income WHERE {$whereClause}");
+$stmt = $db->prepare("SELECT COUNT(*) as total FROM income i WHERE {$whereClause}");
 $stmt->execute($params);
 $totalRecords = $stmt->fetch()['total'];
 $totalPages = ceil($totalRecords / $perPage);
@@ -72,13 +88,20 @@ $stmt->execute();
 $records = $stmt->fetchAll();
 
 // Get Total Amount
-$stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE {$whereClause}");
+$stmt = $db->prepare("SELECT COALESCE(SUM(i.amount), 0) as total FROM income i WHERE {$whereClause}");
 $stmt->execute($params);
 $totalAmount = $stmt->fetch()['total'];
 
-// Get Categories
-$stmt = $db->query("SELECT * FROM income_categories ORDER BY name");
+// Get Categories (ຂອງວັດນີ້ເທົ່ານັ້ນ ຖ້າລະບົບ multi-temple ເປີດໃຊ້)
+if ($currentTempleId) {
+    $stmt = $db->prepare("SELECT * FROM income_categories WHERE temple_id = ? ORDER BY name");
+    $stmt->execute([$currentTempleId]);
+} else {
+    $stmt = $db->query("SELECT * FROM income_categories ORDER BY name");
+}
 $categories = $stmt->fetchAll();
+
+require_once __DIR__ . '/../../includes/header.php';
 
 ?>
 

@@ -1,5 +1,6 @@
 <?php
 require_once '../../config.php';
+require_once '../../includes/temple_functions.php';
 
 // Temporary fix: Ensure generateCSRF function exists
 if (!function_exists('generateCSRF')) {
@@ -21,6 +22,13 @@ if (!isAdmin()) {
 
 $db = getDB();
 
+// ດຶງ temple_id ຂອງຜູ້ໃຊ້ປະຈຸບັນ
+$currentTempleId = null;
+$isMultiTemple = function_exists('isMultiTempleEnabled') && isMultiTempleEnabled();
+if ($isMultiTemple && function_exists('getCurrentTempleId')) {
+    $currentTempleId = getCurrentTempleId();
+}
+
 // ປະມວນຜົນຟອມ (ກ່ອນ header)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ກວດສອບ CSRF Token
@@ -41,17 +49,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         try {
-            // ກວດສອບວ່າມີຊື່ຊໍ້າບໍ່
-            $stmt = $db->prepare("SELECT id FROM expense_categories WHERE name = ?");
-            $stmt->execute([$name]);
+            // ກວດສອບວ່າມີຊື່ຊໍ້າບໍ່ (ພາຍໃນວັດດຽວກັນ)
+            if ($currentTempleId) {
+                $stmt = $db->prepare("SELECT id FROM expense_categories WHERE name = ? AND temple_id = ?");
+                $stmt->execute([$name, $currentTempleId]);
+            } else {
+                $stmt = $db->prepare("SELECT id FROM expense_categories WHERE name = ?");
+                $stmt->execute([$name]);
+            }
+            
             if ($stmt->fetch()) {
                 setFlashMessage('ມີໝວດໝູ່ນີ້ຢູ່ແລ້ວ', 'error');
                 redirect('/modules/categories/expense_add.php');
             }
 
-            $stmt = $db->prepare("INSERT INTO expense_categories (name, description) VALUES (?, ?)");
+            // ເພີ່ມ temple_id ຖ້າມີ
+            if ($currentTempleId) {
+                $stmt = $db->prepare("INSERT INTO expense_categories (temple_id, name, description) VALUES (?, ?, ?)");
+                $success = $stmt->execute([$currentTempleId, $name, $description]);
+            } else {
+                $stmt = $db->prepare("INSERT INTO expense_categories (name, description) VALUES (?, ?)");
+                $success = $stmt->execute([$name, $description]);
+            }
             
-            if ($stmt->execute([$name, $description])) {
+            if ($success) {
                 $new_id = $db->lastInsertId();
                 logActivity($_SESSION['user_id'], 'INSERT', 'expense_categories', $new_id, "ເພີ່ມໝວດໝູ່ລາຍຈ່າຍ: {$name}");
                 setFlashMessage('ເພີ່ມໝວດໝູ່ສຳເລັດ', 'success');

@@ -5,34 +5,62 @@
  */
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/includes/temple_functions.php';
 
 requireLogin();
 
 $db = getDB();
+
+// ດຶງ temple_id ຂອງຜູ້ໃຊ້ປະຈຸບັນ (ຖ້າລະບົບ multi-temple ເປີດໃຊ້)
+$currentTempleId = null;
+$isMultiTemple = function_exists('isMultiTempleEnabled') && isMultiTempleEnabled();
+if ($isMultiTemple && function_exists('getCurrentTempleId')) {
+    $currentTempleId = getCurrentTempleId();
+}
 
 // ດຶງຂໍ້ມູນສະຫຼຸບ
 $currentMonth = date('Y-m');
 $currentYear = date('Y');
 
 // ລວມລາຍຮັບທັງໝົດ
-$stmt = $db->query("SELECT COALESCE(SUM(amount), 0) as total FROM income");
+if ($currentTempleId) {
+    $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE temple_id = ?");
+    $stmt->execute([$currentTempleId]);
+} else {
+    $stmt = $db->query("SELECT COALESCE(SUM(amount), 0) as total FROM income");
+}
 $totalIncome = $stmt->fetch()['total'];
 
 // ລວມລາຍຈ່າຍທັງໝົດ
-$stmt = $db->query("SELECT COALESCE(SUM(amount), 0) as total FROM expense");
+if ($currentTempleId) {
+    $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM expense WHERE temple_id = ?");
+    $stmt->execute([$currentTempleId]);
+} else {
+    $stmt = $db->query("SELECT COALESCE(SUM(amount), 0) as total FROM expense");
+}
 $totalExpense = $stmt->fetch()['total'];
 
 // ຍອດຄົງເຫຼືອ
 $balance = $totalIncome - $totalExpense;
 
 // ລາຍຮັບເດືອນນີ້
-$stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE DATE_FORMAT(date, '%Y-%m') = ?");
-$stmt->execute([$currentMonth]);
+if ($currentTempleId) {
+    $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE temple_id = ? AND DATE_FORMAT(date, '%Y-%m') = ?");
+    $stmt->execute([$currentTempleId, $currentMonth]);
+} else {
+    $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE DATE_FORMAT(date, '%Y-%m') = ?");
+    $stmt->execute([$currentMonth]);
+}
 $monthlyIncome = $stmt->fetch()['total'];
 
 // ລາຍຈ່າຍເດືອນນີ້
-$stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM expense WHERE DATE_FORMAT(date, '%Y-%m') = ?");
-$stmt->execute([$currentMonth]);
+if ($currentTempleId) {
+    $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM expense WHERE temple_id = ? AND DATE_FORMAT(date, '%Y-%m') = ?");
+    $stmt->execute([$currentTempleId, $currentMonth]);
+} else {
+    $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM expense WHERE DATE_FORMAT(date, '%Y-%m') = ?");
+    $stmt->execute([$currentMonth]);
+}
 $monthlyExpense = $stmt->fetch()['total'];
 
 // ດຶງຂໍ້ມູນ 6 ເດືອນຫຼ້າສຸດສຳລັບກາຟ
@@ -40,12 +68,24 @@ $monthlyData = [];
 for ($i = 5; $i >= 0; $i--) {
     $month = date('Y-m', strtotime("-$i months"));
     
-    $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE DATE_FORMAT(date, '%Y-%m') = ?");
-    $stmt->execute([$month]);
+    // ລາຍຮັບ
+    if ($currentTempleId) {
+        $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE temple_id = ? AND DATE_FORMAT(date, '%Y-%m') = ?");
+        $stmt->execute([$currentTempleId, $month]);
+    } else {
+        $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE DATE_FORMAT(date, '%Y-%m') = ?");
+        $stmt->execute([$month]);
+    }
     $income = $stmt->fetch()['total'];
     
-    $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM expense WHERE DATE_FORMAT(date, '%Y-%m') = ?");
-    $stmt->execute([$month]);
+    // ລາຍຈ່າຍ
+    if ($currentTempleId) {
+        $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM expense WHERE temple_id = ? AND DATE_FORMAT(date, '%Y-%m') = ?");
+        $stmt->execute([$currentTempleId, $month]);
+    } else {
+        $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) as total FROM expense WHERE DATE_FORMAT(date, '%Y-%m') = ?");
+        $stmt->execute([$month]);
+    }
     $expense = $stmt->fetch()['total'];
     
     $monthlyData[] = [
@@ -57,16 +97,30 @@ for ($i = 5; $i >= 0; $i--) {
 }
 
 // ດຶງລາຍການລ່າສຸດ 5 ລາຍການ
-$stmt = $db->prepare("
-    SELECT 'income' as type, date, description, amount, created_at 
-    FROM income 
-    UNION ALL 
-    SELECT 'expense' as type, date, description, amount, created_at 
-    FROM expense 
-    ORDER BY created_at DESC 
-    LIMIT 5
-");
-$stmt->execute();
+if ($currentTempleId) {
+    $stmt = $db->prepare("
+        SELECT 'income' as type, date, description, amount, created_at 
+        FROM income 
+        WHERE temple_id = ?
+        UNION ALL 
+        SELECT 'expense' as type, date, description, amount, created_at 
+        FROM expense 
+        WHERE temple_id = ?
+        ORDER BY created_at DESC 
+        LIMIT 5
+    ");
+    $stmt->execute([$currentTempleId, $currentTempleId]);
+} else {
+    $stmt = $db->query("
+        SELECT 'income' as type, date, description, amount, created_at 
+        FROM income 
+        UNION ALL 
+        SELECT 'expense' as type, date, description, amount, created_at 
+        FROM expense 
+        ORDER BY created_at DESC 
+        LIMIT 5
+    ");
+}
 $recentTransactions = $stmt->fetchAll();
 
 // ກຳນົດຊື່ໜ້າ
