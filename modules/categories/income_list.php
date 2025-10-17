@@ -44,8 +44,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     }
     
     $delete_id = $_POST['delete_id'];
+    
+    // ⚠️ ກວດສອບວ່າ delete_id ເປັນຕົວເລກທີ່ຖືກຕ້ອງ
+    if (!$delete_id || !is_numeric($delete_id) || $delete_id <= 0) {
+        setFlashMessage('ID ບໍ່ຖືກຕ້ອງ', 'error');
+        redirect('/modules/categories/income_list.php');
+    }
+    
     try {
-        // ⚠️ ກວດສອบວ່າໝວດໝູ່ນີ້ເປັນຂອງວັດນີ້ບໍ່ (ຄວາມປອດໄພ)
+        // ⚠️ ກວດສອບວ່າໝວດໝູ່ນີ້ເປັນຂອງວັດນີ້ບໍ່ (ຄວາມປອດໄພ)
         if ($currentTempleId) {
             $stmt = $db->prepare("SELECT id FROM income_categories WHERE id = ? AND temple_id = ?");
             $stmt->execute([$delete_id, $currentTempleId]);

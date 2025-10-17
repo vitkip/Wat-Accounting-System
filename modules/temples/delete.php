@@ -16,6 +16,12 @@ if (!isSuperAdmin()) {
 $db = getDB();
 $templeId = $_GET['id'] ?? 0;
 
+// ⚠️ ກວດສອບ ID ວ່າເປັນຕົວເລກທີ່ຖືກຕ້ອງ
+if (!$templeId || !is_numeric($templeId) || $templeId <= 0) {
+    setFlashMessage('ID ບໍ່ຖືກຕ້ອງ', 'error');
+    redirect('/modules/temples/index.php');
+}
+
 // ກວດສອບວ່າວັດມີຢູ່ຈິງ - ໃຊ້ $templeData ເພື່ອບໍ່ໃຫ້ຊ້ຳກັບ $temple ໃນ header.php
 $templeData = getTempleById($templeId);
 

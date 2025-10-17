@@ -280,6 +280,12 @@ require_once __DIR__ . '/../../includes/header.php';
 
 <script>
 function confirmDeleteIncome(id) {
+    // ກວດສອບວ່າ ID ເປັນຕົວເລກທີ່ຖືກຕ້ອງ
+    if (!id || isNaN(id) || id <= 0) {
+        Swal.fire('ຂໍ້ຜິດພາດ!', 'ID ບໍ່ຖືກຕ້ອງ', 'error');
+        return;
+    }
+    
     confirmDelete('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບລາຍຮັບນີ້?').then((result) => {
         if (result.isConfirmed) {
             window.location.href = '<?php echo BASE_URL; ?>/modules/income/delete.php?id=' + id;

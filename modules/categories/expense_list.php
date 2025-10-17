@@ -44,6 +44,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     }
     
     $delete_id = $_POST['delete_id'];
+    
+    // ⚠️ ກວດສອບວ່າ delete_id ເປັນຕົວເລກທີ່ຖືກຕ້ອງ
+    if (!$delete_id || !is_numeric($delete_id) || $delete_id <= 0) {
+        setFlashMessage('ID ບໍ່ຖືກຕ້ອງ', 'error');
+        redirect('/modules/categories/expense_list.php');
+    }
+    
     try {
         // ⚠️ ກວດສອບວ່າໝວດໝູ່ນີ້ເປັນຂອງວັດນີ້ບໍ່ (ຄວາມປອດໄພ)
         if ($currentTempleId) {

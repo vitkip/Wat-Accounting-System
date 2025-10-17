@@ -12,6 +12,13 @@ requireLogin();
 $db = getDB();
 $id = $_GET['id'] ?? 0;
 
+// ⚠️ ກວດສອບ ID ວ່າເປັນຕົວເລກທີ່ຖືກຕ້ອງ
+if (!$id || !is_numeric($id) || $id <= 0) {
+    setFlashMessage('ID ບໍ່ຖືກຕ້ອງ', 'error');
+    header('Location: ' . BASE_URL . '/modules/expense/list.php');
+    exit();
+}
+
 // ກວດສອບວ່າລະບົບ multi-temple ເປີດໃຊ້ຫຼືບໍ່
 $isMultiTemple = function_exists('isMultiTempleEnabled') && isMultiTempleEnabled();
 $currentTempleId = null;

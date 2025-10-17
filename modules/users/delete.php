@@ -12,6 +12,13 @@ requireAdmin();
 $db = getDB();
 $id = $_GET['id'] ?? 0;
 
+// ⚠️ ກວດສອບ ID ວ່າເປັນຕົວເລກທີ່ຖືກຕ້ອງ
+if (!$id || !is_numeric($id) || $id <= 0) {
+    setFlashMessage('ID ບໍ່ຖືກຕ້ອງ', 'error');
+    header('Location: ' . BASE_URL . '/modules/users/list.php');
+    exit();
+}
+
 // ກວດສອບສິດຂອງຜູ້ໃຊ້ປັດຈຸບັນ
 $currentUser = $_SESSION;
 $isSuperAdmin = ($currentUser['is_super_admin'] ?? 0) == 1;
@@ -60,14 +67,24 @@ if ($user) {
         if ($incomeCount > 0 || $expenseCount > 0) {
             setFlashMessage('ບໍ່ສາມາດລຶບຜູ້ໃຊ້ນີ້ໄດ້ເນື່ອງຈາກມີການບັນທຶກຂໍ້ມູນໃນລະບົບ', 'error');
         } else {
-            // ລຶບຂໍ້ມູນ
-            $stmt = $db->prepare("DELETE FROM users WHERE id = :id");
-            $stmt->execute([':id' => $id]);
+            // ⚠️ ລຶບພ້ອມກວດສອບ temple_id ອີກຄັ້ງເພື່ອຄວາມປອດໄພ
+            if (!$isSuperAdmin && $isMultiTemple && $currentTempleId) {
+                // Admin ທົ່ວໄປຕ້ອງກວດສອບ temple_id
+                $stmt = $db->prepare("DELETE FROM users WHERE id = :id AND temple_id = :temple_id");
+                $stmt->execute([':id' => $id, ':temple_id' => $currentTempleId]);
+            } else {
+                // Super Admin ລຶບໄດ້ທຸກຄົນ
+                $stmt = $db->prepare("DELETE FROM users WHERE id = :id");
+                $stmt->execute([':id' => $id]);
+            }
             
-            // ບັນທຶກ audit log
-            logAudit($_SESSION['user_id'], 'DELETE', 'users', $id, $user, null);
-            
-            setFlashMessage('ລຶບຜູ້ໃຊ້ສຳເລັດແລ້ວ ✓', 'success');
+            if ($stmt->rowCount() > 0) {
+                // ບັນທຶກ audit log
+                logAudit($_SESSION['user_id'], 'DELETE', 'users', $id, $user, null);
+                setFlashMessage('ລຶບຜູ້ໃຊ້ສຳເລັດແລ້ວ ✓', 'success');
+            } else {
+                setFlashMessage('ບໍ່ສາມາດລຶບຜູ້ໃຊ້ໄດ້', 'error');
+            }
         }
     } catch (PDOException $e) {
         setFlashMessage('ເກີດຂໍ້ຜິດພາດໃນການລຶບຂໍ້ມູນ: ' . $e->getMessage(), 'error');

@@ -177,6 +177,12 @@ require_once __DIR__ . '/../../includes/header.php';
 
 <script>
 function confirmDeleteUser(id) {
+    // ກວດສອບວ່າ ID ເປັນຕົວເລກທີ່ຖືກຕ້ອງ
+    if (!id || isNaN(id) || id <= 0) {
+        Swal.fire('ຂໍ້ຜິດພາດ!', 'ID ບໍ່ຖືກຕ້ອງ', 'error');
+        return;
+    }
+    
     confirmDelete('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບຜູ້ໃຊ້ນີ້? ການກະທຳນີ້ບໍ່ສາມາດຍົກເລີກໄດ້!').then((result) => {
         if (result.isConfirmed) {
             window.location.href = '<?php echo BASE_URL; ?>/modules/users/delete.php?id=' + id;
