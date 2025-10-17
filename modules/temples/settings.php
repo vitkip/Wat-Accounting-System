@@ -19,8 +19,8 @@ if (!$currentTempleId || !canAccessTemple($currentTempleId)) {
     exit();
 }
 
-// ດຶງຂໍ້ມູນວັດ
-$temple = getTempleById($currentTempleId);
+// ດຶງຂໍ້ມູນວັດ - ໃຊ້ $templeData ເພື່ອບໍ່ໃຫ້ຊ້ຳກັບ $temple ໃນ header.php
+$templeData = getTempleById($currentTempleId);
 
 // ຈັດການການບັນທຶກຂໍ້ມູນ (POST request)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -78,7 +78,7 @@ require_once __DIR__ . '/../../includes/header.php';
 <!-- Page Header -->
 <div class="mb-8">
     <h1 class="text-3xl font-bold text-gray-800 mb-2">ຕັ້ງຄ່າວັດ</h1>
-    <p class="text-gray-600">ຈັດການການຕັ້ງຄ່າສະເພາະຂອງ: <span class="font-semibold text-blue-600"><?php echo e($temple['temple_name_lao']); ?></span></p>
+    <p class="text-gray-600">ຈັດການການຕັ້ງຄ່າສະເພາະຂອງ: <span class="font-semibold text-blue-600"><?php echo e($templeData['temple_name_lao']); ?></span></p>
 </div>
 
 <?php displayFlashMessage(); ?>

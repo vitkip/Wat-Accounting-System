@@ -1,0 +1,48 @@
+# Development files
+test_*.php
+debug_*.php
+*_test.php
+*_debug.php
+*.log
+*.bak
+*.tmp
+*.old
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# Logs
+logs/*.log
+!logs/.gitkeep
+!logs/.htaccess
+
+# Environment
+.env
+config.local.php
+
+# Screenshots
+*.png
+*.jpg
+*.jpeg
+*.gif
+!assets/**
+
+# Backup
+backup/
+*.sql.gz
+*.sql.bak

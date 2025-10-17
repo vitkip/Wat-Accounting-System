@@ -76,6 +76,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ລຳດັບ</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຊື່ຜູ້ໃຊ້</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຊື່ເຕັມ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ອີເມວ</th>
                     <?php if ($isSuperAdmin): ?>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ວັດ</th>
                     <?php endif; ?>
@@ -87,7 +88,7 @@ require_once __DIR__ . '/../../includes/header.php';
             <tbody class="bg-white divide-y divide-gray-200">
                 <?php if (empty($users)): ?>
                 <tr>
-                    <td colspan="<?php echo $isSuperAdmin ? 7 : 6; ?>" class="px-6 py-8 text-center text-gray-500">
+                    <td colspan="<?php echo $isSuperAdmin ? 8 : 7; ?>" class="px-6 py-8 text-center text-gray-500">
                         ບໍ່ມີຂໍ້ມູນຜູ້ໃຊ້
                     </td>
                 </tr>
@@ -107,6 +108,9 @@ require_once __DIR__ . '/../../includes/header.php';
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             <?php echo e($user['full_name']); ?>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            <?php echo $user['email'] ? e($user['email']) : '<span class="text-gray-400">-</span>'; ?>
                         </td>
                         <?php if ($isSuperAdmin): ?>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">

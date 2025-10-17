@@ -1,0 +1,3 @@
+# ປ້ອງກັນການເຂົ້າເຖິງໂຟນເດີ logs
+Order deny,allow
+Deny from all

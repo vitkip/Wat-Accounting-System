@@ -15,12 +15,18 @@ if (!isSuperAdmin()) {
 
 $db = getDB();
 $errors = [];
-$templeId = $_GET['id'] ?? 0;
+$templeId = (int)($_GET['id'] ?? 0);
 
-// ດຶງຂໍ້ມູນວັດ
-$temple = getTempleById($templeId);
+// ກວດສອບວ່າມີ ID ຫຼືບໍ່
+if ($templeId <= 0) {
+    setFlashMessage('ກະລຸນາລະບຸ ID ວັດ', 'error');
+    redirect('/modules/temples/index.php');
+}
 
-if (!$temple) {
+// ດຶງຂໍ້ມູນວັດ - ໃຊ້ $templeData ເພື່ອບໍ່ໃຫ້ຊ້ຳກັບ $temple ໃນ header.php
+$templeData = getTempleById($templeId);
+
+if (!$templeData) {
     setFlashMessage('ບໍ່ພົບຂໍ້ມູນວັດ', 'error');
     redirect('/modules/temples/index.php');
 }
@@ -86,6 +92,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $pageTitle = "ແກ້ໄຂຂໍ້ມູນວັດ";
 require_once __DIR__ . '/../../includes/header.php';
+
+// Debug Information (can be enabled with ?debug=1)
+if ($debugMode) {
+    echo '<div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 px-4 py-3 rounded mb-4">';
+    echo '<strong>🔍 Debug Mode Enabled</strong><br>';
+    echo 'Temple ID: ' . $templeId . '<br>';
+    echo 'Temple Found: ✅ Yes<br>';
+    echo 'Temple Code: ' . ($templeData['temple_code'] ?? 'N/A') . '<br>';
+    echo 'Temple Name Lao: ' . ($templeData['temple_name_lao'] ?? 'N/A') . '<br>';
+    echo '<details><summary>Full Data (click to expand)</summary><pre style="max-height: 300px; overflow: auto;">' . print_r($temple, true) . '</pre></details>';
+    echo '</div>';
+}
 ?>
 
 <!-- Page Header -->
@@ -93,7 +111,7 @@ require_once __DIR__ . '/../../includes/header.php';
     <div class="flex justify-between items-center">
         <div>
             <h1 class="text-3xl font-bold text-gray-800 mb-2">ແກ້ໄຂຂໍ້ມູນວັດ</h1>
-            <p class="text-gray-600">ລະຫັດວັດ: <strong><?php echo e($temple['temple_code']); ?></strong></p>
+            <p class="text-gray-600">ລະຫັດວັດ: <strong><?php echo e($templeData['temple_code']); ?></strong></p>
         </div>
         <a href="index.php" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition duration-200">
             <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,7 +156,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     ລະຫັດວັດ
                 </label>
-                <input type="text" value="<?php echo e($temple['temple_code']); ?>"
+                <input type="text" value="<?php echo e($templeData['temple_code']); ?>"
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                        readonly>
                 <p class="text-xs text-gray-500 mt-1">ບໍ່ສາມາດແກ້ໄຂລະຫັດວັດໄດ້</p>
@@ -151,8 +169,8 @@ require_once __DIR__ . '/../../includes/header.php';
                 </label>
                 <select name="status" 
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                    <option value="active" <?php echo $temple['status'] === 'active' ? 'selected' : ''; ?>>ເປີດໃຊ້ງານ</option>
-                    <option value="inactive" <?php echo $temple['status'] === 'inactive' ? 'selected' : ''; ?>>ປິດໃຊ້ງານ</option>
+                    <option value="active" <?php echo $templeData['status'] === 'active' ? 'selected' : ''; ?>>ເປີດໃຊ້ງານ</option>
+                    <option value="inactive" <?php echo $templeData['status'] === 'inactive' ? 'selected' : ''; ?>>ປິດໃຊ້ງານ</option>
                 </select>
             </div>
             
@@ -162,7 +180,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     ຊື່ວັດ (ອັງກິດ)
                 </label>
                 <input type="text" name="temple_name" 
-                       value="<?php echo e($_POST['temple_name'] ?? $temple['temple_name']); ?>"
+                       value="<?php echo e(isset($_POST['temple_name']) ? $_POST['temple_name'] : ($templeData['temple_name'] ?? '')); ?>"
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                        placeholder="Wat Pa Nongboua Tongtai">
             </div>
@@ -173,7 +191,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     ຊື່ວັດ (ລາວ) <span class="text-red-500">*</span>
                 </label>
                 <input type="text" name="temple_name_lao" 
-                       value="<?php echo e($_POST['temple_name_lao'] ?? $temple['temple_name_lao']); ?>"
+                       value="<?php echo e(isset($_POST['temple_name_lao']) ? $_POST['temple_name_lao'] : ($templeData['temple_name_lao'] ?? '')); ?>"
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                        placeholder="ວັດປ່າໜອງບົວທອງໃຕ້" required>
             </div>
@@ -184,7 +202,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     ຊື່ເຈົ້າອະທິການ
                 </label>
                 <input type="text" name="abbot_name" 
-                       value="<?php echo e($_POST['abbot_name'] ?? $temple['abbot_name']); ?>"
+                       value="<?php echo e(isset($_POST['abbot_name']) ? $_POST['abbot_name'] : ($templeData['abbot_name'] ?? '')); ?>"
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                        placeholder="ພະອາຈານ...">
             </div>
@@ -195,7 +213,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     ເບີໂທ
                 </label>
                 <input type="text" name="phone" 
-                       value="<?php echo e($_POST['phone'] ?? $temple['phone']); ?>"
+                       value="<?php echo e(isset($_POST['phone']) ? $_POST['phone'] : ($templeData['phone'] ?? '')); ?>"
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                        placeholder="020 1234 5678">
             </div>
@@ -206,7 +224,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     ອີເມລ
                 </label>
                 <input type="email" name="email" 
-                       value="<?php echo e($_POST['email'] ?? $temple['email']); ?>"
+                       value="<?php echo e(isset($_POST['email']) ? $_POST['email'] : ($templeData['email'] ?? '')); ?>"
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                        placeholder="temple@example.com">
             </div>
@@ -217,7 +235,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     ເມືອງ
                 </label>
                 <input type="text" name="district" 
-                       value="<?php echo e($_POST['district'] ?? $temple['district']); ?>"
+                       value="<?php echo e(isset($_POST['district']) ? $_POST['district'] : ($templeData['district'] ?? '')); ?>"
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                        placeholder="ໄຊເສດຖາ">
             </div>
@@ -228,7 +246,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     ແຂວງ
                 </label>
                 <input type="text" name="province" 
-                       value="<?php echo e($_POST['province'] ?? $temple['province']); ?>"
+                       value="<?php echo e(isset($_POST['province']) ? $_POST['province'] : ($templeData['province'] ?? '')); ?>"
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                        placeholder="ວຽງຈັນ">
             </div>
@@ -240,7 +258,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 </label>
                 <textarea name="address" rows="3"
                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                          placeholder="ບ້ານ..., ເມືອງ..., ແຂວງ..."><?php echo e($_POST['address'] ?? $temple['address']); ?></textarea>
+                          placeholder="ບ້ານ..., ເມືອງ..., ແຂວງ..."><?php echo e(isset($_POST['address']) ? $_POST['address'] : ($templeData['address'] ?? '')); ?></textarea>
             </div>
         </div>
     </div>

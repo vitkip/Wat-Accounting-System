@@ -1,0 +1,7 @@
+# ໂຟນເດີນີ້ສຳລັບເກັບ Error Logs
+# ກະລຸນາຢ່າລຶບໂຟນເດີນີ້
+
+# ຕັ້ງສິດທິ:
+# chmod 755 logs/
+# chmod 644 logs/.gitkeep
+# chmod 666 logs/php-error.log (ຖ້າມີ)

@@ -176,9 +176,45 @@ function updateTemple($templeId, $data) {
  */
 function getTempleStatistics($templeId) {
     $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM temple_statistics WHERE temple_id = ?");
-    $stmt->execute([$templeId]);
-    return $stmt->fetch();
+    
+    try {
+        // ພະຍາຍາມໃຊ້ VIEW ກ່ອນ
+        $stmt = $db->prepare("SELECT * FROM temple_statistics WHERE temple_id = ?");
+        $stmt->execute([$templeId]);
+        return $stmt->fetch();
+    } catch (PDOException $e) {
+        // ຖ້າ VIEW ບໍ່ມີ, ໃຊ້ query ທາງກົງ
+        error_log("View temple_statistics not found for single temple, using direct query: " . $e->getMessage());
+        
+        try {
+            $stmt = $db->prepare("
+                SELECT 
+                    t.id as temple_id,
+                    t.temple_code,
+                    t.temple_name_lao,
+                    COALESCE((SELECT SUM(amount) FROM income WHERE temple_id = t.id), 0) as total_income,
+                    COALESCE((SELECT SUM(amount) FROM expense WHERE temple_id = t.id), 0) as total_expense,
+                    COALESCE((SELECT SUM(amount) FROM income WHERE temple_id = t.id), 0) - 
+                    COALESCE((SELECT SUM(amount) FROM expense WHERE temple_id = t.id), 0) as balance,
+                    (SELECT COUNT(*) FROM users WHERE temple_id = t.id) as total_users,
+                    t.status
+                FROM temples t
+                WHERE t.id = ?
+            ");
+            $stmt->execute([$templeId]);
+            return $stmt->fetch();
+        } catch (PDOException $e2) {
+            error_log("Error getting temple statistics for ID {$templeId}: " . $e2->getMessage());
+            // Return default values
+            return [
+                'temple_id' => $templeId,
+                'total_income' => 0,
+                'total_expense' => 0,
+                'balance' => 0,
+                'total_users' => 0
+            ];
+        }
+    }
 }
 
 /**
@@ -186,8 +222,36 @@ function getTempleStatistics($templeId) {
  */
 function getAllTempleStatistics() {
     $db = getDB();
-    $stmt = $db->query("SELECT * FROM temple_statistics ORDER BY temple_code");
-    return $stmt->fetchAll();
+    
+    try {
+        // ພະຍາຍາມໃຊ້ VIEW ກ່ອນ
+        $stmt = $db->query("SELECT * FROM temple_statistics ORDER BY temple_code");
+        return $stmt->fetchAll();
+    } catch (PDOException $e) {
+        // ຖ້າ VIEW ບໍ່ມີ, ໃຊ້ query ທາງກົງ
+        error_log("View temple_statistics not found, using direct query: " . $e->getMessage());
+        
+        try {
+            $stmt = $db->query("
+                SELECT 
+                    t.id as temple_id,
+                    t.temple_code,
+                    t.temple_name_lao,
+                    COALESCE((SELECT SUM(amount) FROM income WHERE temple_id = t.id), 0) as total_income,
+                    COALESCE((SELECT SUM(amount) FROM expense WHERE temple_id = t.id), 0) as total_expense,
+                    COALESCE((SELECT SUM(amount) FROM income WHERE temple_id = t.id), 0) - 
+                    COALESCE((SELECT SUM(amount) FROM expense WHERE temple_id = t.id), 0) as balance,
+                    (SELECT COUNT(*) FROM users WHERE temple_id = t.id) as total_users,
+                    t.status
+                FROM temples t
+                ORDER BY t.temple_code
+            ");
+            return $stmt->fetchAll();
+        } catch (PDOException $e2) {
+            error_log("Error getting temple statistics: " . $e2->getMessage());
+            return [];
+        }
+    }
 }
 
 /**
@@ -373,3 +437,57 @@ function getTempleExpenseCategories($templeId) {
     $stmt->execute([$templeId]);
     return $stmt->fetchAll();
 }
+
+/**
+ * ຟັງຊັນແປງ timestamp ໃຫ້ເປັນຮູບແບບ "ກ່ອນນີ້ບໍ່ດິນທີ່ສິດສິດ"
+ */
+function time_ago($datetime, $full = false) {
+    if ($datetime === null) return "ບໍ່ເຄີຍ";
+    
+    $now = new DateTime;
+    try {
+        $ago = new DateTime($datetime);
+    } catch (Exception $e) {
+        return $datetime; // Return original if invalid
+    }
+    
+    $diff = $now->diff($ago);
+
+    $diff->w = floor($diff->d / 7);
+    $diff->d -= $diff->w * 7;
+
+    $string = [
+        'y' => 'ປີ',
+        'm' => 'ເດືອນ',
+        'w' => 'ອາທິດ',
+        'd' => 'ມື້',
+        'h' => 'ຊົ່ວໂມງ',
+        'i' => 'ນາທີ',
+        's' => 'ວິນາທີ',
+    ];
+    foreach ($string as $k => &$v) {
+        if ($diff->$k) {
+            $v = $diff->$k . ' ' . $v . ($diff->$k > 1 ? '' : '');
+        } else {
+            unset($string[$k]);
+        }
+    }
+
+    if (!$full) $string = array_slice($string, 0, 1);
+    return $string ? implode(', ', $string) . 'ກ່ອນ' : 'ເມື່ອກີ້ນີ້';
+}
+
+/**
+ * ຟັງຊັນແປງວັນເດືອນປີໃຫ້ເປັນຮູບແບບອ່ານເຂົ້າໃຈງ່າຍ
+ */
+function formatLaoDate($dateString) {
+    if (empty($dateString)) return '-';
+    try {
+        $date = new DateTime($dateString);
+        // Example format: ວັນທີ 16/10/2025 ເວລາ 14:30
+        return "ວັນທີ " . $date->format('d/m/Y') . " ເວລາ " . $date->format('H:i');
+    } catch (Exception $e) {
+        return $dateString; // Return original string if format fails
+    }
+}
+?>

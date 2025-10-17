@@ -16,10 +16,10 @@ if (!isSuperAdmin()) {
 $db = getDB();
 $templeId = $_GET['id'] ?? 0;
 
-// ກວດສອບວ່າວັດມີຢູ່ຈິງ
-$temple = getTempleById($templeId);
+// ກວດສອບວ່າວັດມີຢູ່ຈິງ - ໃຊ້ $templeData ເພື່ອບໍ່ໃຫ້ຊ້ຳກັບ $temple ໃນ header.php
+$templeData = getTempleById($templeId);
 
-if (!$temple) {
+if (!$templeData) {
     setFlashMessage('ບໍ່ພົບວັດທີ່ທ່ານຕ້ອງການລຶບ', 'error');
     redirect('/modules/temples/index.php');
 }
@@ -69,9 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $db->commit();
         
-        logAudit('temples', $templeId, 'delete', "ລຶບວັດ: {$temple['temple_name_lao']} ({$temple['temple_code']})");
+        logAudit('temples', $templeId, 'delete', "ລຶບວັດ: {$templeData['temple_name_lao']} ({$templeData['temple_code']})");
         
-        setFlashMessage("ລຶບວັດ '{$temple['temple_name_lao']}' ສຳເລັດ", 'success');
+        setFlashMessage("ລຶບວັດ '{$templeData['temple_name_lao']}' ສຳເລັດ", 'success');
         redirect('/modules/temples/index.php');
         
     } catch (Exception $e) {
@@ -108,11 +108,11 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="space-y-2 text-sm">
             <div class="flex justify-between">
                 <span class="text-gray-600">ລະຫັດວັດ:</span>
-                <span class="font-bold"><?php echo e($temple['temple_code']); ?></span>
+                <span class="font-bold"><?php echo e($templeData['temple_code']); ?></span>
             </div>
             <div class="flex justify-between">
                 <span class="text-gray-600">ຊື່ວັດ:</span>
-                <span class="font-bold"><?php echo e($temple['temple_name_lao']); ?></span>
+                <span class="font-bold"><?php echo e($templeData['temple_name_lao']); ?></span>
             </div>
         </div>
     </div>

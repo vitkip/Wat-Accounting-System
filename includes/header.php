@@ -12,6 +12,9 @@ require_once __DIR__ . '/csrf.php';
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
     <!-- Phetsarath Lao Font -->
     <link href="https://fonts.googleapis.com/css2?family=Phetsarath:wght@400;700&display=swap" rel="stylesheet">
     
@@ -28,6 +31,52 @@ require_once __DIR__ . '/csrf.php';
         }
         .swal2-popup {
             font-family: 'Phetsarath', sans-serif;
+        }
+        
+        /* Smooth Dropdown Animations */
+        .dropdown-menu {
+            transform-origin: top;
+            animation: dropdownSlideIn 0.2s ease-out;
+        }
+        
+        @keyframes dropdownSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        /* Desktop Dropdown Hover Effect */
+        .nav-dropdown {
+            position: relative;
+        }
+        
+        .nav-dropdown > .dropdown-menu {
+            visibility: hidden;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+        
+        .nav-dropdown:hover > .dropdown-menu {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        
+        /* Menu Item Hover Effect */
+        .menu-item {
+            transition: all 0.2s ease;
+        }
+        
+        .menu-item:hover {
+            transform: translateX(4px);
         }
     </style>
     
@@ -185,7 +234,7 @@ require_once __DIR__ . '/csrf.php';
     
     <?php if (isLoggedIn()): ?>
     <!-- Navigation -->
-    <nav class="bg-gradient-to-r from-green-600 to-green-700 shadow-lg">
+    <nav class="bg-gradient-to-r from-green-600 to-green-700 shadow-xl border border-gray-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <!-- Logo -->
@@ -217,86 +266,101 @@ require_once __DIR__ . '/csrf.php';
                     <!-- ໜ້າຫຼັກ -->
                     <a href="<?php echo BASE_URL; ?>/index.php" 
                        class="px-4 py-2 text-sm font-medium text-white hover:bg-green-800 rounded-lg transition duration-200 flex items-center">
-                        <span class="mr-1.5">📊</span> ໜ້າຫຼັກ
+                        <span class="mr-1.5">🏠</span> ໜ້າຫຼັກ
                     </a>
                     
-                    <!-- ການເງິນ Dropdown -->
-                    <div class="relative group">
+                    <!-- ລາຍຮັບ Dropdown -->
+                    <div class="nav-dropdown">
                         <button class="px-4 py-2 text-sm font-medium text-white hover:bg-green-800 rounded-lg transition duration-200 flex items-center">
-                            <span class="mr-1.5">💰</span> ການເງິນ
+                            <span class="mr-1.5">💰</span> ລາຍຮັບ
                             <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                             </svg>
                         </button>
-                        <div class="absolute left-0 mt-1 w-48 bg-white rounded-lg shadow-lg py-2 hidden group-hover:block z-50">
+                        <div class="absolute left-0 mt-1 w-52 bg-white rounded-lg shadow-xl border border-gray-100 py-2 dropdown-menu z-50">
+                            <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">ລາຍຮັບ</div>
                             <a href="<?php echo BASE_URL; ?>/modules/income/list.php" 
-                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition duration-150">
-                                <span class="mr-2">💰</span> ລາຍຮັບ
+                               class="menu-item block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition duration-150">
+                                <span class="mr-2">�</span> ລາຍການລາຍຮັບ
                             </a>
                             <a href="<?php echo BASE_URL; ?>/modules/income/add.php" 
-                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition duration-150">
-                                <span class="mr-2">➕</span> ເພີ່ມລາຍຮັບ
+                               class="menu-item block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition duration-150">
+                                <span class="mr-2">➕</span> ເພີ່ມລາຍຮັບໃໝ່
                             </a>
-                            <div class="border-t border-gray-200 my-1"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- ລາຍຈ່າຍ Dropdown -->
+                    <div class="nav-dropdown">
+                        <button class="px-4 py-2 text-sm font-medium text-white hover:bg-green-800 rounded-lg transition duration-200 flex items-center">
+                            <span class="mr-1.5">💸</span> ລາຍຈ່າຍ
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div class="absolute left-0 mt-1 w-52 bg-white rounded-lg shadow-xl border border-gray-100 py-2 dropdown-menu z-50">
+                            <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">ລາຍຈ່າຍ</div>
                             <a href="<?php echo BASE_URL; ?>/modules/expense/list.php" 
-                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition duration-150">
-                                <span class="mr-2">💸</span> ລາຍຈ່າຍ
+                               class="menu-item block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition duration-150">
+                                <span class="mr-2">�</span> ລາຍການລາຍຈ່າຍ
                             </a>
                             <a href="<?php echo BASE_URL; ?>/modules/expense/add.php" 
-                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition duration-150">
-                                <span class="mr-2">➖</span> ເພີ່ມລາຍຈ່າຍ
+                               class="menu-item block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition duration-150">
+                                <span class="mr-2">➕</span> ເພີ່ມລາຍຈ່າຍໃໝ່
                             </a>
                         </div>
                     </div>
                     
                     <!-- ລາຍງານ Dropdown -->
-                    <div class="relative group">
+                    <div class="nav-dropdown">
                         <button class="px-4 py-2 text-sm font-medium text-white hover:bg-green-800 rounded-lg transition duration-200 flex items-center">
-                            <span class="mr-1.5">📈</span> ລາຍງານ
+                            <span class="mr-1.5">�</span> ລາຍງານ
                             <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                             </svg>
                         </button>
-                        <div class="absolute left-0 mt-1 w-48 bg-white rounded-lg shadow-lg py-2 hidden group-hover:block z-50">
+                        <div class="absolute left-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-gray-100 py-2 dropdown-menu z-50">
+                            <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">ລາຍງານ</div>
                             <a href="<?php echo BASE_URL; ?>/modules/report/index.php" 
-                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition duration-150">
-                                <span class="mr-2">📊</span> ພາບລວມ
+                               class="menu-item block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition duration-150">
+                                <span class="mr-2">�</span> ລາຍງານພາບລວມ
                             </a>
+                       
+                
                         </div>
                     </div>
                     
                     <?php if (isAdmin()): ?>
-                    <!-- ຈັດການ Dropdown -->
-                    <div class="relative group">
+                    <!-- ຈັດການລະບົບ Dropdown -->
+                    <div class="nav-dropdown">
                         <button class="px-4 py-2 text-sm font-medium text-white hover:bg-green-800 rounded-lg transition duration-200 flex items-center">
                             <span class="mr-1.5">⚙️</span> ຈັດການ
                             <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                             </svg>
                         </button>
-                        <div class="absolute left-0 mt-1 w-56 bg-white rounded-lg shadow-lg py-2 hidden group-hover:block z-50">
+                        <div class="absolute left-0 mt-1 w-60 bg-white rounded-lg shadow-xl border border-gray-100 py-2 dropdown-menu z-50">
+                            <!-- ໝວດໝູ່ -->
+                            <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">ໝວດໝູ່</div>
                             <a href="<?php echo BASE_URL; ?>/modules/categories/income_list.php" 
-                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition duration-150">
+                               class="menu-item block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition duration-150">
                                 <span class="mr-2">🏷️</span> ໝວດໝູ່ລາຍຮັບ
                             </a>
                             <a href="<?php echo BASE_URL; ?>/modules/categories/expense_list.php" 
-                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition duration-150">
+                               class="menu-item block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition duration-150">
                                 <span class="mr-2">🏷️</span> ໝວດໝູ່ລາຍຈ່າຍ
                             </a>
-                            <div class="border-t border-gray-200 my-1"></div>
-                            <a href="<?php echo BASE_URL; ?>/modules/users/list.php" 
-                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition duration-150">
-                                <span class="mr-2">👥</span> ຈັດການຜູ້ໃຊ້
-                            </a>
-                            <div class="border-t border-gray-200 my-1"></div>
-                            <a href="<?php echo BASE_URL; ?>/modules/temples/settings.php" 
-                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition duration-150">
-                                <span class="mr-2">🔧</span> ຕັ້ງຄ່າວັດ
-                            </a>
+                            
+                           
+                            
+                         
+                            
                             <?php if (function_exists('isSuperAdmin') && isSuperAdmin()): ?>
-                            <div class="border-t border-gray-200 my-1"></div>
+                            <!-- Super Admin -->
+                            <div class="border-t border-gray-200 my-2"></div>
+                            <div class="px-3 py-2 text-xs font-semibold text-purple-500 uppercase tracking-wider">Super Admin</div>
                             <a href="<?php echo BASE_URL; ?>/modules/temples/index.php" 
-                               class="block px-4 py-2 text-sm text-yellow-700 font-semibold hover:bg-yellow-50 transition duration-150">
+                               class="menu-item block px-4 py-2 text-sm text-purple-700 font-semibold hover:bg-purple-50 transition duration-150">
                                 <span class="mr-2">🏛️</span> ຈັດການວັດທັງໝົດ
                             </a>
                             <?php endif; ?>
@@ -306,22 +370,98 @@ require_once __DIR__ . '/csrf.php';
 
     
                     
-                    <!-- User Info Desktop -->
-                    <div class="flex items-center space-x-2 ml-3 pl-3 border-l border-green-500">
-                        <div class="hidden lg:flex items-center px-3 py-1.5 bg-green-800 bg-opacity-50 rounded-lg">
-                            <span class="text-xs text-white">
-                                <span class="mr-1">👤</span><?php echo e($_SESSION['full_name'] ?? $_SESSION['username']); ?>
-                                <?php if (function_exists('isSuperAdmin') && isSuperAdmin()): ?>
-                                    <span class="ml-2 px-1.5 py-0.5 text-xs bg-purple-400 text-purple-900 rounded font-medium">Super Admin</span>
-                                <?php elseif (isAdmin()): ?>
-                                    <span class="ml-2 px-1.5 py-0.5 text-xs bg-yellow-400 text-yellow-900 rounded font-medium">Admin</span>
-                                <?php endif; ?>
+                    <!-- User Info Desktop Dropdown -->
+                    <div x-data="{ open: false }" @click.away="open = false" class="relative ml-3 pl-3 border-l border-green-500">
+                        <button @click="open = !open" class="flex items-center px-3 py-1.5 bg-green-800 bg-opacity-50 rounded-lg hover:bg-green-800 transition duration-200">
+                            <span class="text-sm text-white font-medium">
+                                <span class="mr-1">👤</span>
+                                <span class="hidden lg:inline"><?php echo e($_SESSION['full_name'] ?? $_SESSION['username']); ?></span>
                             </span>
+                            <?php if (function_exists('isSuperAdmin') && isSuperAdmin()): ?>
+                                <span class="ml-2 px-1.5 py-0.5 text-xs bg-purple-400 text-purple-900 rounded font-medium hidden lg:inline">Super Admin</span>
+                            <?php elseif (isAdmin()): ?>
+                                <span class="ml-2 px-1.5 py-0.5 text-xs bg-yellow-400 text-yellow-900 rounded font-medium hidden lg:inline">Admin</span>
+                            <?php endif; ?>
+                            <svg class="w-4 h-4 ml-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        
+                        <!-- Dropdown Menu -->
+                        <div x-show="open"
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="transform opacity-0 scale-95"
+                             x-transition:enter-end="transform opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="transform opacity-100 scale-100"
+                             x-transition:leave-end="transform opacity-0 scale-95"
+                             style="display: none;"
+                             class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl py-2 z-50 border border-gray-200">
+                            
+                            <!-- User Info Header -->
+                            <div class="px-4 py-3 border-b border-gray-200">
+                                <p class="text-sm font-semibold text-gray-900"><?php echo e($_SESSION['full_name'] ?? $_SESSION['username']); ?></p>
+                                <p class="text-xs text-gray-600 mt-1">@<?php echo e($_SESSION['username']); ?></p>
+                                <div class="mt-2">
+                                    <?php if (function_exists('isSuperAdmin') && isSuperAdmin()): ?>
+                                        <span class="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded font-medium">🌟 Super Admin</span>
+                                    <?php elseif (isAdmin()): ?>
+                                        <span class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded font-medium">⚡ Admin</span>
+                                    <?php else: ?>
+                                        <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded font-medium">👤 User</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            
+                            <!-- Temple Switcher (Super Admin Only) -->
+                            <?php if (function_exists('isSuperAdmin') && isSuperAdmin()): ?>
+                            <div class="px-2 py-2 border-b border-gray-200">
+                                <a href="<?php echo BASE_URL; ?>/modules/temples/index.php" 
+                                   class="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 rounded-lg transition duration-150">
+                                    <span class="mr-3">🏛️</span>
+                                    <span>ສະຫຼັບວັດ</span>
+                                </a>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <!-- Menu Items -->
+                            <div class="px-2 py-2">
+                                <a href="<?php echo BASE_URL; ?>/modules/users/profile.php" 
+                                   class="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition duration-150">
+                                    <span class="mr-3">👤</span>
+                                    <span>ໂປຣໄຟລ໌</span>
+                                </a>
+                                 <!-- ຜູ້ໃຊ້ -->
+                            <div class="border-t border-gray-200 my-2"></div>
+                            <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">ຜູ້ໃຊ້ງານ</div>
+                            <a href="<?php echo BASE_URL; ?>/modules/users/list.php" 
+                               class="menu-item block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition duration-150">
+                                <span class="mr-2">👥</span> ຈັດການຜູ້ໃຊ້
+                            </a>
+                                <?php if (isAdmin()): ?>
+                                <a href="<?php echo BASE_URL; ?>/modules/temples/settings.php" 
+                                   class="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition duration-150">
+                                    <span class="mr-3">⚙️</span>
+                                    <span>ການຕັ້ງຄ່າ</span>
+                                </a>
+                                <?php endif; ?>
+                                
+                                <a href="<?php echo BASE_URL; ?>/modules/report/index.php" 
+                                   class="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition duration-150">
+                                    <span class="mr-3">📊</span>
+                                    <span>ລາຍງານ</span>
+                                </a>
+                            </div>
+                            
+                            <!-- Logout -->
+                            <div class="px-2 pt-2 border-t border-gray-200">
+                                <a href="<?php echo BASE_URL; ?>/logout.php" 
+                                   class="flex items-center px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition duration-150 font-medium">
+                                    <span class="mr-3">🚪</span>
+                                    <span>ອອກຈາກລະບົບ</span>
+                                </a>
+                            </div>
                         </div>
-                        <a href="<?php echo BASE_URL; ?>/logout.php" 
-                           class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200 flex items-center shadow-md">
-                            <span class="mr-1">🚪</span> ອອກ
-                        </a>
                     </div>
                 </div>
                 
@@ -349,58 +489,177 @@ require_once __DIR__ . '/csrf.php';
             <div class="px-2 pt-2 pb-3 space-y-1">
                 <!-- User Info Mobile -->
                 <div class="px-3 py-3 bg-green-800 bg-opacity-50 rounded-lg mb-2">
-                    <div class="text-sm font-medium text-white">
-                        👤 <?php echo e($_SESSION['full_name'] ?? $_SESSION['username']); ?>
-                    </div>
-                    <?php if (isAdmin()): ?>
-                        <div class="mt-1">
+                    <div class="text-sm font-medium text-white flex items-center justify-between">
+                        <span>👤 <?php echo e($_SESSION['full_name'] ?? $_SESSION['username']); ?></span>
+                        <?php if (function_exists('isSuperAdmin') && isSuperAdmin()): ?>
+                            <span class="px-2 py-1 text-xs bg-purple-400 text-purple-900 rounded font-medium">Super Admin</span>
+                        <?php elseif (isAdmin()): ?>
                             <span class="px-2 py-1 text-xs bg-yellow-400 text-yellow-900 rounded font-medium">Admin</span>
-                        </div>
-                    <?php endif; ?>
+                        <?php else: ?>
+                            <span class="px-2 py-1 text-xs bg-blue-400 text-blue-900 rounded font-medium">User</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="text-xs text-green-200 mt-1">@<?php echo e($_SESSION['username']); ?></div>
                 </div>
                 
-                <!-- Menu Items -->
+                <!-- ໜ້າຫຼັກ -->
                 <a href="<?php echo BASE_URL; ?>/index.php" 
-                   class="block px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800">
-                    📊 ໜ້າຫຼັກ
+                   class="flex items-center px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800 transition duration-200">
+                    <span class="mr-2">🏠</span> ໜ້າຫຼັກ
                 </a>
-                <a href="<?php echo BASE_URL; ?>/modules/income/list.php" 
-                   class="block px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800">
-                    💰 ລາຍຮັບ
-                </a>
-                <a href="<?php echo BASE_URL; ?>/modules/expense/list.php" 
-                   class="block px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800">
-                    💸 ລາຍຈ່າຍ
-                </a>
-                <a href="<?php echo BASE_URL; ?>/modules/report/index.php" 
-                   class="block px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800">
-                    📈 ລາຍງານ
-                </a>
+                
+                <!-- ລາຍຮັບ Accordion -->
+                <div x-data="{ open: false }" class="space-y-1">
+                    <button @click="open = !open" 
+                            class="w-full flex items-center justify-between px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800 transition duration-200">
+                        <span><span class="mr-2">💰</span> ລາຍຮັບ</span>
+                        <svg class="w-5 h-5 transition-transform duration-200" 
+                             :class="{ 'rotate-180': open }"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div x-show="open" 
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 -translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         style="display: none;"
+                         class="pl-4 space-y-1">
+                        <a href="<?php echo BASE_URL; ?>/modules/income/list.php" 
+                           class="flex items-center px-3 py-2 rounded-lg text-sm text-green-100 hover:bg-green-800 transition duration-200">
+                            <span class="mr-2">📋</span> ລາຍການລາຍຮັບ
+                        </a>
+                        <a href="<?php echo BASE_URL; ?>/modules/income/add.php" 
+                           class="flex items-center px-3 py-2 rounded-lg text-sm text-green-100 hover:bg-green-800 transition duration-200">
+                            <span class="mr-2">➕</span> ເພີ່ມລາຍຮັບໃໝ່
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- ລາຍຈ່າຍ Accordion -->
+                <div x-data="{ open: false }" class="space-y-1">
+                    <button @click="open = !open" 
+                            class="w-full flex items-center justify-between px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800 transition duration-200">
+                        <span><span class="mr-2">�</span> ລາຍຈ່າຍ</span>
+                        <svg class="w-5 h-5 transition-transform duration-200" 
+                             :class="{ 'rotate-180': open }"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div x-show="open" 
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 -translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         style="display: none;"
+                         class="pl-4 space-y-1">
+                        <a href="<?php echo BASE_URL; ?>/modules/expense/list.php" 
+                           class="flex items-center px-3 py-2 rounded-lg text-sm text-green-100 hover:bg-green-800 transition duration-200">
+                            <span class="mr-2">📋</span> ລາຍການລາຍຈ່າຍ
+                        </a>
+                        <a href="<?php echo BASE_URL; ?>/modules/expense/add.php" 
+                           class="flex items-center px-3 py-2 rounded-lg text-sm text-green-100 hover:bg-green-800 transition duration-200">
+                            <span class="mr-2">➕</span> ເພີ່ມລາຍຈ່າຍໃໝ່
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- ລາຍງານ Accordion -->
+                <div x-data="{ open: false }" class="space-y-1">
+                    <button @click="open = !open" 
+                            class="w-full flex items-center justify-between px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800 transition duration-200">
+                        <span><span class="mr-2">�</span> ລາຍງານ</span>
+                        <svg class="w-5 h-5 transition-transform duration-200" 
+                             :class="{ 'rotate-180': open }"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div x-show="open" 
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 -translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         style="display: none;"
+                         class="pl-4 space-y-1">
+                        <a href="<?php echo BASE_URL; ?>/modules/report/index.php" 
+                           class="flex items-center px-3 py-2 rounded-lg text-sm text-green-100 hover:bg-green-800 transition duration-200">
+                            <span class="mr-2">📈</span> ລາຍງານພາບລວມ
+                        </a>
+                    </div>
+                </div>
+                
                 <?php if (isAdmin()): ?>
-                <a href="<?php echo BASE_URL; ?>/modules/categories/income_list.php" 
-                   class="block px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800">
-                    🏷️ ໝວດໝູ່
+                <!-- ຈັດການລະບົບ Accordion -->
+                <div x-data="{ open: false }" class="space-y-1">
+                    <button @click="open = !open" 
+                            class="w-full flex items-center justify-between px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800 transition duration-200">
+                        <span><span class="mr-2">⚙️</span> ຈັດການລະບົບ</span>
+                        <svg class="w-5 h-5 transition-transform duration-200" 
+                             :class="{ 'rotate-180': open }"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div x-show="open" 
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 -translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         style="display: none;"
+                         class="pl-4 space-y-1">
+                        <div class="px-3 py-1 text-xs font-semibold text-green-300 uppercase">ໝວດໝູ່</div>
+                        <a href="<?php echo BASE_URL; ?>/modules/categories/income_list.php" 
+                           class="flex items-center px-3 py-2 rounded-lg text-sm text-green-100 hover:bg-green-800 transition duration-200">
+                            <span class="mr-2">🏷️</span> ໝວດໝູ່ລາຍຮັບ
+                        </a>
+                        <a href="<?php echo BASE_URL; ?>/modules/categories/expense_list.php" 
+                           class="flex items-center px-3 py-2 rounded-lg text-sm text-green-100 hover:bg-green-800 transition duration-200">
+                            <span class="mr-2">🏷️</span> ໝວດໝູ່ລາຍຈ່າຍ
+                        </a>
+                        
+                        <div class="px-3 py-1 text-xs font-semibold text-green-300 uppercase mt-2">ຜູ້ໃຊ້ງານ</div>
+                        <a href="<?php echo BASE_URL; ?>/modules/users/list.php" 
+                           class="flex items-center px-3 py-2 rounded-lg text-sm text-green-100 hover:bg-green-800 transition duration-200">
+                            <span class="mr-2">👥</span> ຈັດການຜູ້ໃຊ້
+                        </a>
+                        
+                        <?php if (function_exists('isSuperAdmin') && isSuperAdmin()): ?>
+                        <div class="border-t border-green-600 my-2"></div>
+                        <div class="px-3 py-1 text-xs font-semibold text-purple-300 uppercase">Super Admin</div>
+                        <a href="<?php echo BASE_URL; ?>/modules/temples/index.php" 
+                           class="flex items-center px-3 py-2 rounded-lg text-sm text-purple-200 font-semibold hover:bg-green-800 transition duration-200">
+                            <span class="mr-2">🏛️</span> ຈັດການວັດທັງໝົດ
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <!-- ໂປຣໄຟລ໌ & ການຕັ້ງຄ່າ -->
+                <div class="border-t border-green-600 my-2"></div>
+                
+                <a href="<?php echo BASE_URL; ?>/modules/users/profile.php" 
+                   class="flex items-center px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800 transition duration-200">
+                    <span class="mr-2">�</span> ໂປຣໄຟລ໌
                 </a>
-                <a href="<?php echo BASE_URL; ?>/modules/users/list.php" 
-                   class="block px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800">
-                    👥 ຜູ້ໃຊ້
-                </a>
+                
+                <?php if (isAdmin()): ?>
                 <a href="<?php echo BASE_URL; ?>/modules/temples/settings.php" 
-                   class="block px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800">
-                    🔧 ຕັ້ງຄ່າວັດ
+                   class="flex items-center px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800 transition duration-200">
+                    <span class="mr-2">⚙️</span> ການຕັ້ງຄ່າ
                 </a>
                 <?php endif; ?>
+                
                 <?php if (function_exists('isSuperAdmin') && isSuperAdmin()): ?>
                 <a href="<?php echo BASE_URL; ?>/modules/temples/index.php" 
-                   class="block px-3 py-3 rounded-lg text-base font-medium text-white hover:bg-green-800">
-                    🏛️ ຈັດການວັດ
+                   class="flex items-center px-3 py-3 rounded-lg text-base font-medium text-purple-200 hover:bg-green-800 transition duration-200">
+                    <span class="mr-2">🏛️</span> ສະຫຼັບວັດ
                 </a>
                 <?php endif; ?>
                 
                 <!-- Logout Button Mobile -->
                 <a href="<?php echo BASE_URL; ?>/logout.php" 
-                   class="block px-3 py-3 mt-2 rounded-lg text-base font-medium text-white bg-red-500 hover:bg-red-600 text-center shadow-md">
-                    🚪 ອອກຈາກລະບົບ
+                   class="flex items-center justify-center px-3 py-3 mt-2 rounded-lg text-base font-medium text-white bg-red-500 hover:bg-red-600 shadow-xl border border-gray-100 transition duration-200">
+                    <span class="mr-2">🚪</span> ອອກຈາກລະບົບ
                 </a>
             </div>
         </div>

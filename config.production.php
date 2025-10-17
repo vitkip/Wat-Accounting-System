@@ -1,0 +1,311 @@
+<?php
+/**
+ * ລະບົບບັນຊີວັດ (Wat Accounting System)
+ * ໄຟລ໌ຕັ້ງຄ່າລະບົບສຳລັບ Production Server
+ * 
+ * ຄຳແນະນຳການນຳໃຊ້:
+ * 1. ປ່ຽນຊື່ໄຟລ໌ນີ້ເປັນ config.php ເມື່ອອັບໂຫຼດໄປ production server
+ * 2. ປ່ຽນຄ່າຕ່າງໆຕາມການຕັ້ງຄ່າ server ຂອງທ່ານ
+ * 3. ຮັບປະກັນວ່າໄຟລ໌ນີ້ປອດໄພ (chmod 644)
+ */
+
+// ການຕັ້ງຄ່າຖານຂໍ້ມູນ - ປ່ຽນຄ່າເຫຼົ່ານີ້ຕາມ Production Server
+define('DB_HOST', 'localhost');  // ຫຼື IP ຂອງ database server
+define('DB_NAME', 'laotemples_prod');  // ຊື່ database ຈິງ
+define('DB_USER', 'laotemples_user');  // username database
+define('DB_PASS', 'YOUR_SECURE_PASSWORD_HERE');  // password ທີ່ເຂັ້ມແຂງ
+define('DB_CHARSET', 'utf8mb4');
+
+// ການຕັ້ງຄ່າລະບົບ
+define('SITE_NAME', 'ບັນຊີວັດ');
+define('BASE_URL', 'https://laotemples.com/all');  // URL ຈິງຂອງທ່ານ
+define('TIMEZONE', 'Asia/Vientiane');
+
+// ການຕັ້ງຄ່າຄວາມປອດໄພ
+define('SESSION_LIFETIME', 3600); // 1 ຊົ່ວໂມງ
+define('CSRF_TOKEN_NAME', 'csrf_token');
+define('PASSWORD_MIN_LENGTH', 8);  // ເພີ່ມຄວາມຍາວ password ໃນ production
+
+// ການຕັ້ງຄ່າ Error Handling ສຳລັບ Production
+define('ENVIRONMENT', 'production');
+error_reporting(E_ALL);
+ini_set('display_errors', 0);  // ປິດການສະແດງ error ໃຫ້ຜູ້ໃຊ້ເຫັນ
+ini_set('display_startup_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/logs/php-error.log');  // ບັນທຶກ error ເຂົ້າໄຟລ໌
+
+// ຕັ້ງເຂດເວລາ
+date_default_timezone_set(TIMEZONE);
+
+// ໂຫຼດຟັງຊັນຈັດການວັດກ່ອນ ເພື່ອໃຫ້ສາມາດໃຊ້ງານໄດ້ທັນທີ
+require_once __DIR__ . '/includes/temple_functions.php';
+
+// Set timezone based on temple setting or default
+if (function_exists('getCurrentTempleId') && function_exists('getTempleSetting')) {
+    try {
+        $currentTempleId = getCurrentTempleId();
+        if ($currentTempleId) {
+            $timezone = getTempleSetting($currentTempleId, 'timezone', 'Asia/Vientiane');
+            date_default_timezone_set($timezone);
+        }
+    } catch (Exception $e) {
+        error_log("Error setting timezone: " . $e->getMessage());
+    }
+}
+
+// ເລີ່ມ Session ກ່ອນການຕັ້ງຄ່າ
+if (session_status() === PHP_SESSION_NONE) {
+    // ການຕັ້ງຄ່າ Session ທີ່ປອດໄພສຳລັບ Production
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.use_only_cookies', 1);
+    ini_set('session.cookie_samesite', 'Strict');
+    ini_set('session.cookie_secure', 1);  // ບັງຄັບໃຊ້ HTTPS
+    ini_set('session.use_strict_mode', 1);
+    
+    session_start();
+}
+
+// ການເຊື່ອມຕໍ່ຖານຂໍ້ມູນດ້ວຍ PDO
+function getDB() {
+    static $pdo = null;
+    
+    if ($pdo === null) {
+        try {
+            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+            $options = [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES " . DB_CHARSET
+            ];
+            
+            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        } catch (PDOException $e) {
+            // ບັນທຶກ error ແທນທີ່ຈະສະແດງໃຫ້ຜູ້ໃຊ້ເຫັນ
+            error_log("Database connection error: " . $e->getMessage());
+            
+            // ສະແດງຂໍ້ຄວາມທົ່ວໄປທີ່ປອດໄພ
+            die("ລະບົບກຳລັງບໍາລຸງຮັກສາ ກະລຸນາລອງໃໝ່ພາຍຫຼັງ.");
+        }
+    }
+    
+    return $pdo;
+}
+
+// ຟັງຊັນກວດສອບການເຂົ້າສູ່ລະບົບ
+function isLoggedIn() {
+    return isset($_SESSION['user_id']) && isset($_SESSION['username']);
+}
+
+// ຟັງຊັນກວດສອບສິດແອດມິນ
+function isAdmin() {
+    return isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
+}
+
+// ຟັງຊັນບັງຄັບໃຫ້ເຂົ້າສູ່ລະບົບ
+function requireLogin() {
+    if (!isLoggedIn()) {
+        header('Location: ' . BASE_URL . '/login.php');
+        exit();
+    }
+}
+
+// ຟັງຊັນບັງຄັບສິດແອດມິນ
+function requireAdmin() {
+    requireLogin();
+    if (!isAdmin()) {
+        header('Location: ' . BASE_URL . '/index.php');
+        exit();
+    }
+}
+
+// ຟັງຊັນ redirect ທີ່ຮອງຮັບທັງ absolute ແລະ relative URL
+function redirect($path) {
+    // ຖ້າເປັນ URL ເຕັມຮູບແບບ (ມີ http:// ຫຼື https://)
+    if (preg_match('/^https?:\/\//', $path)) {
+        header('Location: ' . $path);
+        exit();
+    }
+    
+    // ຖ້າເລີ່ມດ້ວຍ / ແມ່ນ absolute path ຈາກ root
+    if (strpos($path, '/') === 0) {
+        header('Location: ' . BASE_URL . $path);
+        exit();
+    }
+    
+    // ຖ້າບໍ່ແມ່ນ relative path
+    header('Location: ' . BASE_URL . '/' . $path);
+    exit();
+}
+
+// ຟັງຊັນປ້ອງກັນ XSS
+function e($string) {
+    if ($string === null) {
+        return '';
+    }
+    return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+}
+
+// ຟັງຊັນບັນທຶກ Audit Log
+function logAudit($userId, $action, $tableName, $recordId, $oldValue = null, $newValue = null) {
+    try {
+        $db = getDB();
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        
+        $sql = "INSERT INTO audit_log (user_id, action, table_name, record_id, old_value, new_value, ip_address) 
+                VALUES (:user_id, :action, :table_name, :record_id, :old_value, :new_value, :ip_address)";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            ':user_id' => $userId,
+            ':action' => $action,
+            ':table_name' => $tableName,
+            ':record_id' => $recordId,
+            ':old_value' => $oldValue ? json_encode($oldValue, JSON_UNESCAPED_UNICODE) : null,
+            ':new_value' => $newValue ? json_encode($newValue, JSON_UNESCAPED_UNICODE) : null,
+            ':ip_address' => $ip
+        ]);
+    } catch (PDOException $e) {
+        error_log("Audit log error: " . $e->getMessage());
+    }
+}
+
+// ຟັງຊັນບັນທຶກກິດຈະກຳ (alias ຂອງ logAudit)
+function logActivity($userId, $action, $tableName, $recordId, $description = null) {
+    return logAudit($userId, $action, $tableName, $recordId, null, $description);
+}
+
+// ຟັງຊັນຈັດຮູບແບບເງິນກີບ
+function formatMoney($amount) {
+    $symbol = 'ກີບ'; // Default symbol
+    if (function_exists('getCurrentTempleId') && function_exists('getTempleSetting')) {
+        try {
+            $currentTempleId = getCurrentTempleId();
+            if ($currentTempleId) {
+                $symbol = getTempleSetting($currentTempleId, 'currency_symbol', 'ກີບ');
+            }
+        } catch (Exception $e) {
+            error_log("Error getting currency symbol: " . $e->getMessage());
+        }
+    }
+    return number_format($amount, 0, ',', '.') . ' ' . e($symbol);
+}
+
+// ຟັງຊັນຈັດຮູບແບບວັນທີ່
+function formatDate($date) {
+    $format = 'd/m/Y'; // Default format
+    if (function_exists('getCurrentTempleId') && function_exists('getTempleSetting')) {
+        try {
+            $currentTempleId = getCurrentTempleId();
+            if ($currentTempleId) {
+                $format = getTempleSetting($currentTempleId, 'date_format', 'd/m/Y');
+            }
+        } catch (Exception $e) {
+            error_log("Error getting date format: " . $e->getMessage());
+        }
+    }
+
+    if (empty($date)) {
+        return '';
+    }
+
+    try {
+        $dateObj = new DateTime($date);
+        // ກວດສອບຖ້າຕ້ອງການສະແດງຊື່ເດືອນເປັນພາສາລາວ (ແບບພິເສດ)
+        if ($format === 'd F Y') {
+            $months = [
+                '01' => 'ມັງກອນ', '02' => 'ກຸມພາ', '03' => 'ມີນາ',
+                '04' => 'ເມສາ', '05' => 'ພຶດສະພາ', '06' => 'ມິຖຸນາ',
+                '07' => 'ກໍລະກົດ', '08' => 'ສິງຫາ', '09' => 'ກັນຍາ',
+                '10' => 'ຕຸລາ', '11' => 'ພະຈິກ', '12' => 'ທັນວາ'
+            ];
+            $day = $dateObj->format('d');
+            $month = $months[$dateObj->format('m')];
+            $year = $dateObj->format('Y');
+            return "{$day} {$month} {$year}";
+        }
+        return $dateObj->format($format);
+    } catch (Exception $e) {
+        error_log("Error formatting date: " . $e->getMessage());
+        return $date; // Return original date if format fails
+    }
+}
+
+// ຟັງຊັນສົ່ງຂໍ້ຄວາມແຈ້ງເຕືອນ
+function setFlashMessage($message, $type = 'success') {
+    $_SESSION['flash_message'] = $message;
+    $_SESSION['flash_type'] = $type;
+}
+
+// ຟັງຊັນສະແດງຂໍ້ຄວາມແຈ້ງເຕືອນ
+function displayFlashMessage() {
+    if (isset($_SESSION['flash_message'])) {
+        $message = $_SESSION['flash_message'];
+        $type = $_SESSION['flash_type'] ?? 'success';
+        
+        $bgColor = $type === 'success' ? 'bg-green-100 border-green-500 text-green-700' : 'bg-red-100 border-red-500 text-red-700';
+        
+        echo "<div class='{$bgColor} border-l-4 p-4 mb-4 rounded' role='alert'>";
+        echo "<p>" . e($message) . "</p>";
+        echo "</div>";
+        
+        unset($_SESSION['flash_message']);
+        unset($_SESSION['flash_type']);
+    }
+}
+
+// ກວດສອບ Session Timeout
+if (isLoggedIn()) {
+    if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > SESSION_LIFETIME)) {
+        session_unset();
+        session_destroy();
+        header('Location: ' . BASE_URL . '/login.php?timeout=1');
+        exit();
+    }
+    $_SESSION['last_activity'] = time();
+}
+
+// ໂຫຼດຟັງຊັນ CSRF ກ່ອນທີ່ຈະໃຊ้ງານ
+require_once __DIR__ . '/includes/csrf.php';
+
+// ສ້າງ alias ສຳລັບ CSRF functions ເພື່ອຄວາມສະດວກ
+if (!function_exists('generateCSRF')) {
+    function generateCSRF() {
+        return generateCsrfToken();
+    }
+}
+
+if (!function_exists('verifyCsrfToken')) {
+    function verifyCsrfToken($token) {
+        return checkCSRF($token);
+    }
+}
+
+if (!function_exists('checkCSRFToken')) {
+    function checkCSRFToken() {
+        return checkCSRF();
+    }
+}
+
+// ຟັງຊັນດຶງຂໍ້ມູນຜູ້ໃຊ້ປະຈຸບັນ
+function getCurrentUser() {
+    if (!isLoggedIn()) {
+        return null;
+    }
+    
+    static $currentUser = null;
+    
+    if ($currentUser === null) {
+        try {
+            $db = getDB();
+            $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
+            $stmt->execute([$_SESSION['user_id']]);
+            $currentUser = $stmt->fetch();
+        } catch (PDOException $e) {
+            error_log("Error getting current user: " . $e->getMessage());
+            return null;
+        }
+    }
+    
+    return $currentUser;
+}

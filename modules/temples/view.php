@@ -16,10 +16,10 @@ if (!isSuperAdmin()) {
 $db = getDB();
 $templeId = $_GET['id'] ?? 0;
 
-// ດຶງຂໍ້ມູນວັດ
-$temple = getTempleById($templeId);
+// ດຶງຂໍ້ມູນວັດ - ໃຊ້ $templeData ເພື່ອບໍ່ໃຫ້ຊ້ຳກັບ $temple ໃນ header.php
+$templeData = getTempleById($templeId);
 
-if (!$temple) {
+if (!$templeData) {
     setFlashMessage('ບໍ່ພົບຂໍ້ມູນວັດ', 'error');
     redirect('/modules/temples/index.php');
 }
@@ -53,8 +53,8 @@ require_once __DIR__ . '/../../includes/header.php';
 <div class="mb-8">
     <div class="flex justify-between items-center">
         <div>
-            <h1 class="text-3xl font-bold text-gray-800 mb-2"><?php echo e($temple['temple_name_lao']); ?></h1>
-            <p class="text-gray-600">ລະຫັດວັດ: <strong><?php echo e($temple['temple_code']); ?></strong></p>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2"><?php echo e($templeData['temple_name_lao']); ?></h1>
+            <p class="text-gray-600">ລະຫັດວັດ: <strong><?php echo e($templeData['temple_code']); ?></strong></p>
         </div>
         <div class="flex space-x-3">
             <a href="index.php" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition duration-200">
@@ -80,13 +80,13 @@ require_once __DIR__ . '/../../includes/header.php';
     <div class="flex items-center justify-between">
         <div>
             <h2 class="text-xl font-bold text-gray-800 mb-2">ສະຖານະວັດ</h2>
-            <span class="px-4 py-2 inline-flex text-sm font-semibold rounded-full <?php echo $temple['status'] === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
-                <?php echo $temple['status'] === 'active' ? '✅ ເປີດໃຊ້ງານ' : '❌ ປິດໃຊ້ງານ'; ?>
+            <span class="px-4 py-2 inline-flex text-sm font-semibold rounded-full <?php echo $templeData['status'] === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
+                <?php echo $templeData['status'] === 'active' ? '✅ ເປີດໃຊ້ງານ' : '❌ ປິດໃຊ້ງານ'; ?>
             </span>
         </div>
         <div class="text-right">
-            <p class="text-sm text-gray-600">ສ້າງເມື່ອ: <?php echo formatDate($temple['created_at']); ?></p>
-            <p class="text-sm text-gray-600">ອັບເດດ: <?php echo formatDate($temple['updated_at']); ?></p>
+            <p class="text-sm text-gray-600">ສ້າງເມື່ອ: <?php echo formatDate($templeData['created_at']); ?></p>
+            <p class="text-sm text-gray-600">ອັບເດດ: <?php echo formatDate($templeData['updated_at']); ?></p>
         </div>
     </div>
 </div>
@@ -164,55 +164,55 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="space-y-3">
             <div class="flex justify-between py-2 border-b">
                 <span class="text-gray-600 font-medium">ລະຫັດວັດ:</span>
-                <span class="text-gray-900 font-bold"><?php echo e($temple['temple_code']); ?></span>
+                <span class="text-gray-900 font-bold"><?php echo e($templeData['temple_code']); ?></span>
             </div>
             
-            <?php if ($temple['temple_name']): ?>
+            <?php if ($templeData['temple_name']): ?>
             <div class="flex justify-between py-2 border-b">
                 <span class="text-gray-600 font-medium">ຊື່ວັດ (EN):</span>
-                <span class="text-gray-900"><?php echo e($temple['temple_name']); ?></span>
+                <span class="text-gray-900"><?php echo e($templeData['temple_name']); ?></span>
             </div>
             <?php endif; ?>
             
             <div class="flex justify-between py-2 border-b">
                 <span class="text-gray-600 font-medium">ຊື່ວັດ (ລາວ):</span>
-                <span class="text-gray-900 font-bold"><?php echo e($temple['temple_name_lao']); ?></span>
+                <span class="text-gray-900 font-bold"><?php echo e($templeData['temple_name_lao']); ?></span>
             </div>
             
-            <?php if ($temple['abbot_name']): ?>
+            <?php if ($templeData['abbot_name']): ?>
             <div class="flex justify-between py-2 border-b">
                 <span class="text-gray-600 font-medium">ເຈົ້າອະທິການ:</span>
-                <span class="text-gray-900"><?php echo e($temple['abbot_name']); ?></span>
+                <span class="text-gray-900"><?php echo e($templeData['abbot_name']); ?></span>
             </div>
             <?php endif; ?>
             
-            <?php if ($temple['phone']): ?>
+            <?php if ($templeData['phone']): ?>
             <div class="flex justify-between py-2 border-b">
                 <span class="text-gray-600 font-medium">ເບີໂທ:</span>
-                <span class="text-gray-900"><?php echo e($temple['phone']); ?></span>
+                <span class="text-gray-900"><?php echo e($templeData['phone']); ?></span>
             </div>
             <?php endif; ?>
             
-            <?php if ($temple['email']): ?>
+            <?php if ($templeData['email']): ?>
             <div class="flex justify-between py-2 border-b">
                 <span class="text-gray-600 font-medium">ອີເມລ:</span>
-                <span class="text-gray-900"><?php echo e($temple['email']); ?></span>
+                <span class="text-gray-900"><?php echo e($templeData['email']); ?></span>
             </div>
             <?php endif; ?>
             
-            <?php if ($temple['district'] || $temple['province']): ?>
+            <?php if ($templeData['district'] || $templeData['province']): ?>
             <div class="flex justify-between py-2 border-b">
                 <span class="text-gray-600 font-medium">ພື້นທີ່:</span>
                 <span class="text-gray-900">
-                    <?php echo e($temple['district']); ?><?php echo $temple['district'] && $temple['province'] ? ', ' : ''; ?><?php echo e($temple['province']); ?>
+                    <?php echo e($templeData['district']); ?><?php echo $templeData['district'] && $templeData['province'] ? ', ' : ''; ?><?php echo e($templeData['province']); ?>
                 </span>
             </div>
             <?php endif; ?>
             
-            <?php if ($temple['address']): ?>
+            <?php if ($templeData['address']): ?>
             <div class="py-2">
                 <span class="text-gray-600 font-medium block mb-1">ທີ່ຢູ່ເຕັມ:</span>
-                <span class="text-gray-900"><?php echo nl2br(e($temple['address'])); ?></span>
+                <span class="text-gray-900"><?php echo nl2br(e($templeData['address'])); ?></span>
             </div>
             <?php endif; ?>
         </div>
@@ -287,7 +287,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
 <!-- Actions -->
 <div class="mt-8 flex justify-center space-x-4">
-    <button onclick="switchToTemple(<?php echo $templeId; ?>, '<?php echo e($temple['temple_name_lao']); ?>')" 
+    <button onclick="switchToTemple(<?php echo $templeId; ?>, '<?php echo e($templeData['temple_name_lao']); ?>')" 
             class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition duration-200 flex items-center">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>

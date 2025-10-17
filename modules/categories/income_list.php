@@ -45,6 +45,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     
     $delete_id = $_POST['delete_id'];
     try {
+        // ⚠️ ກວດສອบວ່າໝວດໝູ່ນີ້ເປັນຂອງວັດນີ້ບໍ່ (ຄວາມປອດໄພ)
+        if ($currentTempleId) {
+            $stmt = $db->prepare("SELECT id FROM income_categories WHERE id = ? AND temple_id = ?");
+            $stmt->execute([$delete_id, $currentTempleId]);
+            if (!$stmt->fetch()) {
+                setFlashMessage('ບໍ່ພົບໝວດໝູ່ນີ້ ຫຼື ທ່ານບໍ່ມີສິດລຶບ', 'error');
+                redirect('/modules/categories/income_list.php');
+            }
+        }
+        
         $stmt = $db->prepare("SELECT COUNT(*) FROM income WHERE category = (SELECT name FROM income_categories WHERE id = ?)");
         $stmt->execute([$delete_id]);
         $count = $stmt->fetchColumn();
@@ -52,10 +62,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
         if ($count > 0) {
             setFlashMessage("ບໍ່ສາມາດລຶບໄດ້! ໝວດໝູ່ນີ້ຖືກໃຊ້ງານຢູ່ໃນ {$count} ລາຍການ", 'error');
         } else {
-            $stmt = $db->prepare("DELETE FROM income_categories WHERE id = ?");
-            if ($stmt->execute([$delete_id])) {
+            // ລຶບພ້ອມກວດສອບ temple_id
+            if ($currentTempleId) {
+                $stmt = $db->prepare("DELETE FROM income_categories WHERE id = ? AND temple_id = ?");
+                $stmt->execute([$delete_id, $currentTempleId]);
+            } else {
+                $stmt = $db->prepare("DELETE FROM income_categories WHERE id = ?");
+                $stmt->execute([$delete_id]);
+            }
+            
+            if ($stmt->rowCount() > 0) {
                 logActivity($_SESSION['user_id'], 'DELETE', 'income_categories', $delete_id, 'ລຶບໝວດໝູ່ລາຍຮັບ');
                 setFlashMessage('ລຶບໝວດໝູ່ສຳເລັດ', 'success');
+            } else {
+                setFlashMessage('ບໍ່ສາມາດລຶບໄດ້', 'error');
             }
         }
     } catch (PDOException $e) {

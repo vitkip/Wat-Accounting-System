@@ -60,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $confirmPassword = $_POST['confirm_password'] ?? '';
     $fullName = trim($_POST['full_name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
     $role = $_POST['role'] ?? 'user';
     $templeId = $_POST['temple_id'] ?? null;
     $isSuperAdminUser = isset($_POST['is_super_admin']) ? 1 : 0;
@@ -81,6 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (empty($fullName)) {
         $errors[] = 'ກະລຸນາປ້ອນຊື່ເຕັມ';
+    }
+    
+    // ກວດສອບອີເມວ (ຖ້າມີການປ້ອນ)
+    if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = 'ອີເມວບໍ່ຖືກຕ້ອງ';
     }
     
     // ຖ້າມີການປ່ຽນລະຫັດຜ່ານ
@@ -124,13 +130,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // ປ່ຽນລະຫັດຜ່ານດ້ວຍ
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
                 $sql = "UPDATE users SET temple_id = :temple_id, username = :username, password = :password, 
-                        full_name = :full_name, role = :role, is_super_admin = :is_super_admin WHERE id = :id";
+                        full_name = :full_name, email = :email, role = :role, is_super_admin = :is_super_admin WHERE id = :id";
                 $stmt = $db->prepare($sql);
                 $stmt->execute([
                     ':temple_id' => $templeId,
                     ':username' => $username,
                     ':password' => $hashedPassword,
                     ':full_name' => $fullName,
+                    ':email' => $email,
                     ':role' => $role,
                     ':is_super_admin' => $isSuperAdminUser,
                     ':id' => $id
@@ -138,12 +145,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 // ບໍ່ປ່ຽນລະຫັດຜ່ານ
                 $sql = "UPDATE users SET temple_id = :temple_id, username = :username, 
-                        full_name = :full_name, role = :role, is_super_admin = :is_super_admin WHERE id = :id";
+                        full_name = :full_name, email = :email, role = :role, is_super_admin = :is_super_admin WHERE id = :id";
                 $stmt = $db->prepare($sql);
                 $stmt->execute([
                     ':temple_id' => $templeId,
                     ':username' => $username,
                     ':full_name' => $fullName,
+                    ':email' => $email,
                     ':role' => $role,
                     ':is_super_admin' => $isSuperAdminUser,
                     ':id' => $id
@@ -154,6 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             logAudit($_SESSION['user_id'], 'UPDATE', 'users', $id, $user, [
                 'username' => $username,
                 'full_name' => $fullName,
+                'email' => $email,
                 'role' => $role,
                 'temple_id' => $templeId,
                 'is_super_admin' => $isSuperAdminUser
@@ -237,6 +246,19 @@ require_once __DIR__ . '/../../includes/header.php';
                        value="<?php echo e($_POST['full_name'] ?? $user['full_name']); ?>"
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                        placeholder="ປ້ອນຊື່ເຕັມ">
+            </div>
+            
+            <div class="mb-6">
+                <label for="email" class="block text-gray-700 font-medium mb-2">
+                    ອີເມວ
+                </label>
+                <input type="email" 
+                       id="email" 
+                       name="email"
+                       value="<?php echo e($_POST['email'] ?? $user['email'] ?? ''); ?>"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                       placeholder="ປ້ອນອີເມວ (ຖ້າມີ)">
+                <p class="text-sm text-gray-500 mt-1">ອີເມວສຳລັບຕິດຕໍ່ (ບໍ່ບັງຄັບ)</p>
             </div>
             
             <?php if ($isSuperAdmin && $isMultiTemple && !empty($temples)): ?>
