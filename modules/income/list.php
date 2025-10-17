@@ -70,8 +70,10 @@ $stmt->execute($params);
 $totalRecords = $stmt->fetch()['total'];
 $totalPages = ceil($totalRecords / $perPage);
 
-// Get Records
-$sql = "SELECT i.*, u.full_name 
+// Get Records - ລະບຸຄັອລຳຢ່າງຊັດເຈນເພື່ອປ້ອງກັນ ambiguous
+$sql = "SELECT i.id AS id, i.date, i.description, i.category, i.amount, 
+               i.created_by, i.temple_id, i.created_at, i.updated_at,
+               u.full_name 
         FROM income i
         LEFT JOIN users u ON i.created_by = u.id
         WHERE {$whereClause}
@@ -85,7 +87,7 @@ foreach ($params as $key => $value) {
 $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
 $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
-$records = $stmt->fetchAll();
+$records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get Total Amount
 $stmt = $db->prepare("SELECT COALESCE(SUM(i.amount), 0) as total FROM income i WHERE {$whereClause}");
@@ -218,7 +220,13 @@ require_once __DIR__ . '/../../includes/header.php';
                     </td>
                 </tr>
                 <?php else: ?>
-                    <?php foreach ($records as $record): ?>
+                    <?php foreach ($records as $record): 
+                        // ກວດສອບວ່າ ID ມີຄ່າບໍ່
+                        $recordId = intval($record['id'] ?? 0);
+                        if ($recordId <= 0) {
+                            continue; // ຂ້າມແຖວທີ່ມີ ID ບໍ່ຖືກຕ້ອງ
+                        }
+                    ?>
                     <tr class="hover:bg-gray-50 transition duration-150">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             <?php echo formatDate($record['date']); ?>
@@ -238,10 +246,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             <?php echo e($record['full_name']); ?>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                            <a href="<?php echo BASE_URL; ?>/modules/income/edit.php?id=<?php echo $record['id']; ?>" 
+                            <a href="<?php echo BASE_URL; ?>/modules/income/edit.php?id=<?php echo $recordId; ?>" 
                                class="text-blue-600 hover:text-blue-900 mr-3">ແກ້ໄຂ</a>
                             <a href="#" 
-                               onclick="confirmDeleteIncome(<?php echo $record['id']; ?>); return false;"
+                               onclick="confirmDeleteIncome(<?php echo $recordId; ?>); return false;"
                                class="text-red-600 hover:text-red-900">ລຶບ</a>
                         </td>
                     </tr>
@@ -281,14 +289,21 @@ require_once __DIR__ . '/../../includes/header.php';
 <script>
 function confirmDeleteIncome(id) {
     // ກວດສອບວ່າ ID ເປັນຕົວເລກທີ່ຖືກຕ້ອງ
+    console.log('Delete Income ID:', id, 'Type:', typeof id);
+    
     if (!id || isNaN(id) || id <= 0) {
-        Swal.fire('ຂໍ້ຜິດພາດ!', 'ID ບໍ່ຖືກຕ້ອງ', 'error');
+        Swal.fire({
+            icon: 'error',
+            title: 'ຂໍ້ຜິດພາດ!',
+            text: 'ID ບໍ່ຖືກຕ້ອງ: ' + id,
+            confirmButtonText: 'ຕົກລົງ'
+        });
         return;
     }
     
     confirmDelete('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບລາຍຮັບນີ້?').then((result) => {
         if (result.isConfirmed) {
-            window.location.href = '<?php echo BASE_URL; ?>/modules/income/delete.php?id=' + id;
+            window.location.href = '<?php echo BASE_URL; ?>/modules/income/delete.php?id=' + parseInt(id);
         }
     });
 }

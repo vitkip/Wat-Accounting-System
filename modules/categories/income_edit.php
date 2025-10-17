@@ -145,9 +145,9 @@ require_once '../../includes/header.php';
                 <?php
                 $stmt = $db->prepare("
                     SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
-                    FROM income WHERE category_id = ?
+                    FROM income WHERE category = ?
                 ");
-                $stmt->execute([$id]);
+                $stmt->execute([$category['name']]);
                 $usage = $stmt->fetch();
                 ?>
                 <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">

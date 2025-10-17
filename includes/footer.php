@@ -12,11 +12,6 @@
     
     <!-- JavaScript -->
     <script>
-        // ຟັງຊັນຢືນຢັນການລຶບ
-        function confirmDelete(message = 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບຂໍ້ມູນນີ້?') {
-            return confirm(message);
-        }
-        
         // ປິດຂໍ້ຄວາມແຈ້ງເຕືອນອັດຕະໂນມັດ
         setTimeout(function() {
             const alerts = document.querySelectorAll('[role="alert"]');

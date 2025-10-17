@@ -12,12 +12,19 @@ requireLogin();
 $db = getDB();
 $id = $_GET['id'] ?? 0;
 
+// ⚠️ Debug: ບັນທຶກຄ່າ ID ທີ່ຮັບມາ
+error_log("🗑️ Income Delete Request - Raw ID: " . var_export($_GET['id'] ?? 'NOT_SET', true) . " | Type: " . gettype($_GET['id'] ?? null));
+
 // ⚠️ ກວດສອບ ID ວ່າເປັນຕົວເລກທີ່ຖືກຕ້ອງ
-if (!$id || !is_numeric($id) || $id <= 0) {
-    setFlashMessage('ID ບໍ່ຖືກຕ້ອງ', 'error');
+if (!isset($_GET['id']) || $_GET['id'] === '' || !is_numeric($_GET['id']) || intval($_GET['id']) <= 0) {
+    error_log("❌ Income Delete FAILED - Invalid ID: " . var_export($_GET['id'] ?? 'NOT_SET', true));
+    setFlashMessage('ID ບໍ່ຖືກຕ້ອງ: ' . ($_GET['id'] ?? 'ບໍ່ມີຂໍ້ມູນ'), 'error');
     header('Location: ' . BASE_URL . '/modules/income/list.php');
     exit();
 }
+
+$id = intval($_GET['id']);
+error_log("✅ Income Delete - Valid ID: " . $id);
 
 // ກວດສອບວ່າລະບົບ multi-temple ເປີດໃຊ້ຫຼືບໍ່
 $isMultiTemple = function_exists('isMultiTempleEnabled') && isMultiTempleEnabled();
