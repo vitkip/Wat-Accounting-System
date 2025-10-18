@@ -36,20 +36,31 @@ if ($isMultiTemple && function_exists('getCurrentTempleId')) {
 
 // ລຶບໝວດໝູ່
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
+    // Debug log
+    error_log("🗑️ Delete request received for expense category");
+    error_log("🔍 POST data: " . print_r($_POST, true));
+    error_log("🔍 Temple ID: " . ($currentTempleId ?? 'NULL'));
+    
     // ກວດສອບ CSRF Token
     $token = $_POST['csrf_token'] ?? '';
     if (!validateCSRFToken($token)) {
+        error_log("❌ CSRF token validation failed");
         setFlashMessage('ຂໍ້ຜິດພາດຄວາມປອດໄພ: CSRF Token ບໍ່ຖືກຕ້ອງ', 'error');
         redirect('/modules/categories/expense_list.php');
     }
     
-    $delete_id = $_POST['delete_id'];
+    $delete_id = intval($_POST['delete_id']);
+    error_log("🔍 Delete ID after extraction: " . $delete_id);
+    error_log("🔍 Delete ID type: " . gettype($delete_id));
     
     // ⚠️ ກວດສອບວ່າ delete_id ເປັນຕົວເລກທີ່ຖືກຕ້ອງ
-    if (!$delete_id || !is_numeric($delete_id) || $delete_id <= 0) {
+    if ($delete_id <= 0) {
+        error_log("❌ Invalid delete_id: " . var_export($delete_id, true));
         setFlashMessage('ID ບໍ່ຖືກຕ້ອງ', 'error');
         redirect('/modules/categories/expense_list.php');
     }
+    
+    error_log("✅ Delete ID validated: " . $delete_id);
     
     try {
         // ⚠️ ກວດສອບວ່າໝວດໝູ່ນີ້ເປັນຂອງວັດນີ້ບໍ່ (ຄວາມປອດໄພ)
@@ -57,35 +68,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
             $stmt = $db->prepare("SELECT id FROM expense_categories WHERE id = ? AND temple_id = ?");
             $stmt->execute([$delete_id, $currentTempleId]);
             if (!$stmt->fetch()) {
+                error_log("❌ Category not found or access denied for temple_id: " . $currentTempleId);
                 setFlashMessage('ບໍ່ພົບໝວດໝູ່ນີ້ ຫຼື ທ່ານບໍ່ມີສິດລຶບ', 'error');
                 redirect('/modules/categories/expense_list.php');
             }
+            error_log("✅ Temple permission verified");
         }
         
         $stmt = $db->prepare("SELECT COUNT(*) FROM expense WHERE category = (SELECT name FROM expense_categories WHERE id = ?)");
         $stmt->execute([$delete_id]);
         $count = $stmt->fetchColumn();
         
+        error_log("🔍 Usage count: " . $count);
+        
         if ($count > 0) {
+            error_log("❌ Cannot delete - category in use: " . $count . " times");
             setFlashMessage("ບໍ່ສາມາດລຶບໄດ້! ໝວດໝູ່ນີ້ຖືກໃຊ້ງານຢູ່ໃນ {$count} ລາຍການ", 'error');
         } else {
             // ລຶບພ້ອມກວດສອບ temple_id
             if ($currentTempleId) {
+                error_log("🔄 Deleting with temple_id: " . $currentTempleId);
                 $stmt = $db->prepare("DELETE FROM expense_categories WHERE id = ? AND temple_id = ?");
                 $stmt->execute([$delete_id, $currentTempleId]);
             } else {
+                error_log("🔄 Deleting without temple restriction");
                 $stmt = $db->prepare("DELETE FROM expense_categories WHERE id = ?");
                 $stmt->execute([$delete_id]);
             }
             
-            if ($stmt->rowCount() > 0) {
+            $rowsAffected = $stmt->rowCount();
+            error_log("🔍 Rows affected: " . $rowsAffected);
+            
+            if ($rowsAffected > 0) {
+                error_log("✅ Category deleted successfully");
                 logActivity($_SESSION['user_id'], 'DELETE', 'expense_categories', $delete_id, 'ລຶບໝວດໝູ່ລາຍຈ່າຍ');
                 setFlashMessage('ລຶບໝວດໝູ່ສຳເລັດ', 'success');
             } else {
+                error_log("❌ No rows deleted");
                 setFlashMessage('ບໍ່ສາມາດລຶບໄດ້', 'error');
             }
         }
     } catch (PDOException $e) {
+        error_log("❌ PDO Exception: " . $e->getMessage());
         setFlashMessage('ເກີດຂໍ້ຜິດພາດ: ' . $e->getMessage(), 'error');
     }
     redirect('/modules/categories/expense_list.php');
@@ -126,6 +150,15 @@ try {
     
     // Debug: ລົງບັນທຶກຈຳນວນທີ່ດຶງໄດ້
     error_log("✅ Found " . count($categories) . " expense categories");
+    
+    // ⚠️ ກວດສອບວ່າແຕ່ລະ category ມີ id ບໍ່
+    foreach ($categories as $idx => $cat) {
+        if (!isset($cat['id']) || empty($cat['id'])) {
+            error_log("⚠️ WARNING: Category at index $idx missing ID: " . json_encode($cat));
+        } else {
+            error_log("✅ Category '{$cat['name']}' has ID: {$cat['id']}");
+        }
+    }
     
 } catch (PDOException $e) {
     error_log("❌ Error fetching expense categories: " . $e->getMessage());
@@ -279,10 +312,20 @@ require_once '../../includes/header.php';
                                             ແກ້ໄຂ
                                         </a>
                                         <?php if ($cat['usage_count'] == 0): ?>
-                                            <form method="POST" class="inline" onsubmit="return confirmDelete('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບໝວດໝູ່ນີ້?');">
+                                            <?php 
+                                            // ⚠️ ກວດສອບວ່າ ID ມີຄ່າຖືກຕ້ອງ
+                                            $categoryId = isset($cat['id']) ? intval($cat['id']) : 0;
+                                            if ($categoryId <= 0) {
+                                                error_log("⚠️ WARNING: Invalid category ID detected: " . var_export($cat, true));
+                                            }
+                                            ?>
+                                            <form method="POST" class="inline delete-category-form" data-category-id="<?= $categoryId ?>">
                                                 <input type="hidden" name="csrf_token" value="<?= generateCSRF() ?>">
-                                                <input type="hidden" name="delete_id" value="<?= $cat['id'] ?>">
-                                                <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition duration-200">
+                                                <input type="hidden" name="delete_id" value="<?= $categoryId ?>" id="delete_id_<?= $categoryId ?>">
+                                                <button type="button" 
+                                                        onclick="confirmDeleteCategory(this.form, '<?= addslashes($cat['name']) ?>', <?= $categoryId ?>)" 
+                                                        class="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition duration-200"
+                                                        <?= $categoryId <= 0 ? 'disabled title="ID ບໍ່ຖືກຕ້ອງ"' : '' ?>>
                                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                                     </svg>
@@ -307,5 +350,60 @@ require_once '../../includes/header.php';
         </div>
     </div>
 </div>
+
+<script>
+function confirmDeleteCategory(form, categoryName, categoryId) {
+    console.log('🗑️ Attempting to delete category:', categoryName, 'ID:', categoryId);
+    console.log('📝 Form delete_id input:', form.querySelector('[name="delete_id"]'));
+    console.log('📝 Form delete_id value:', form.querySelector('[name="delete_id"]').value);
+    
+    // ⚠️ ກວດສອບວ່າ categoryId ຖືກຕ້ອງ
+    if (!categoryId || categoryId <= 0) {
+        console.error('❌ Invalid categoryId:', categoryId);
+        Swal.fire({
+            icon: 'error',
+            title: 'ຂໍ້ຜິດພາດ',
+            text: 'ID ບໍ່ຖືກຕ້ອງ: ' + categoryId
+        });
+        return;
+    }
+    
+    // ✅ ບັງຄັບໃຫ້ hidden input ມີຄ່າທີ່ຖືກຕ້ອງ
+    const deleteInput = form.querySelector('[name="delete_id"]');
+    if (deleteInput) {
+        console.log('🔧 Setting delete_id value to:', categoryId);
+        deleteInput.value = categoryId;
+        console.log('✅ Confirmed delete_id value:', deleteInput.value);
+    } else {
+        console.error('❌ delete_id input not found!');
+    }
+    
+    Swal.fire({
+        icon: 'warning',
+        title: 'ຢືນຢັນການລຶບ',
+        html: `ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບໝວດໝູ່<br><strong>"${categoryName}"</strong>?<br><small class="text-gray-500">ID: ${categoryId}</small>`,
+        showCancelButton: true,
+        confirmButtonText: 'ລຶບ',
+        cancelButtonText: 'ຍົກເລີກ',
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            console.log('✅ User confirmed deletion, submitting form...');
+            console.log('📤 Submitting with delete_id:', deleteInput.value);
+            form.submit();
+        } else {
+            console.log('❌ User cancelled deletion');
+        }
+    });
+}
+</script>
+        } else {
+            console.log('❌ User cancelled deletion');
+        }
+    });
+}
+</script>
 
 <?php require_once '../../includes/footer.php'; ?>
