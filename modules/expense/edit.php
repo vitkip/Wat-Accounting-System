@@ -12,6 +12,15 @@ requireLogin();
 $db = getDB();
 $id = $_GET['id'] ?? 0;
 
+// ກວດສອບ ID
+if (!is_numeric($id) || intval($id) <= 0) {
+    setFlashMessage('ID ບໍ່ຖືກຕ້ອງ', 'error');
+    header('Location: ' . BASE_URL . '/modules/expense/list.php');
+    exit();
+}
+
+$id = intval($id);
+
 // ກວດສອບວ່າລະບົບ multi-temple ເປີດໃຊ້ຫຼືບໍ່
 $isMultiTemple = function_exists('isMultiTempleEnabled') && isMultiTempleEnabled();
 $currentTempleId = null;
@@ -56,14 +65,19 @@ if (!$canEdit) {
 
 // ປະມວນຜົນ POST ກ່ອນໂຫຼດ HTML
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    checkCSRF();
-    
+    // ກວດສອບ CSRF Token
+    if (!checkCSRF()) {
+        setFlashMessage('ຂໍ້ຜິດພາດຄວາມປອດໄພ: CSRF Token ບໍ່ຖືກຕ້ອງ. ກະລຸນາລອງໃໝ່.', 'error');
+        header('Location: ' . BASE_URL . '/modules/expense/edit.php?id=' . $id);
+        exit();
+    }
+
     $date = $_POST['date'] ?? '';
     $description = trim($_POST['description'] ?? '');
     // ຮັບຄ່າຈາກ hidden input ທີ່ເປັນຕົວເລກທຳມະດາ
     $amount = $_POST['amount'] ?? '0';
     $category = trim($_POST['category'] ?? 'ທົ່ວໄປ');
-    
+
     $errors = [];
     
     if (empty($date)) {
@@ -113,9 +127,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ໂຫຼດ header ຫຼັງຈາກປະມວນຜົນ POST ແລ້ວ
 require_once __DIR__ . '/../../includes/header.php';
 
-// ດຶງໝວດໝູ່
-$stmt = $db->query("SELECT * FROM expense_categories ORDER BY name");
-$categories = $stmt->fetchAll();
+// ດຶງໝວດໝູ່ຕາມວັດ (ສຳລັບລະບົບຫຼາຍວັດ)
+$currentTempleId = getCurrentTempleId();
+if ($currentTempleId && function_exists('getTempleExpenseCategories')) {
+    // ດຶງໝວດໝູ່ທີ່ກ່ຽວຂ້ອງກັບວັດນີ້ເທົ່ານັ້ນ (ລວມໝວດໝູ່ທົ່ວໄປ)
+    $categories = getTempleExpenseCategories($currentTempleId);
+} else {
+    // Fallback: ດຶງໝວດໝູ່ທັງໝົດຖ້າບໍ່ມີລະບົບຫຼາຍວັດ
+    $stmt = $db->query("SELECT * FROM expense_categories ORDER BY name");
+    $categories = $stmt->fetchAll();
+}
 
 ?>
 

@@ -9,22 +9,31 @@ require_once __DIR__ . '/../../includes/temple_functions.php';
 
 requireLogin();
 
-$db = getDB();
-$id = $_GET['id'] ?? 0;
-
-// ⚠️ Debug: ບັນທຶກຄ່າ ID ທີ່ຮັບມາ
-error_log("🗑️ Expense Delete Request - Raw ID: " . var_export($_GET['id'] ?? 'NOT_SET', true) . " | Type: " . gettype($_GET['id'] ?? null));
-
-// ⚠️ ກວດສອບ ID ວ່າເປັນຕົວເລກທີ່ຖືກຕ້ອງ
-if (!isset($_GET['id']) || $_GET['id'] === '' || !is_numeric($_GET['id']) || intval($_GET['id']) <= 0) {
-    error_log("❌ Expense Delete FAILED - Invalid ID: " . var_export($_GET['id'] ?? 'NOT_SET', true));
-    setFlashMessage('ID ບໍ່ຖືກຕ້ອງ: ' . ($_GET['id'] ?? 'ບໍ່ມີຂໍ້ມູນ'), 'error');
+// ບັງຄັບໃຫ້ເປັນ POST method ເທົ່ານັ້ນ
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    setFlashMessage('ວິທີການລຶບບໍ່ຖືກຕ້ອງ', 'error');
     header('Location: ' . BASE_URL . '/modules/expense/list.php');
     exit();
 }
 
-$id = intval($_GET['id']);
-error_log("✅ Expense Delete - Valid ID: " . $id);
+// ກວດສອບ CSRF Token
+if (!checkCSRF()) {
+    setFlashMessage('ຂໍ້ຜິດພາດຄວາມປອດໄພ: CSRF Token ບໍ່ຖືກຕ້ອງ', 'error');
+    header('Location: ' . BASE_URL . '/modules/expense/list.php');
+    exit();
+}
+
+$db = getDB();
+$id = $_POST['id'] ?? 0;
+
+// ກວດສອບ ID
+if (!is_numeric($id) || intval($id) <= 0) {
+    setFlashMessage('ID ບໍ່ຖືກຕ້ອງ', 'error');
+    header('Location: ' . BASE_URL . '/modules/expense/list.php');
+    exit();
+}
+
+$id = intval($id);
 
 // ກວດສອບວ່າລະບົບ multi-temple ເປີດໃຊ້ຫຼືບໍ່
 $isMultiTemple = function_exists('isMultiTempleEnabled') && isMultiTempleEnabled();
@@ -41,7 +50,7 @@ $record = $stmt->fetch();
 if ($record) {
     // ກວດສອບສິດທິການລຶບ
     $canDelete = false;
-    
+
     // ຖ້າລະບົບ multi-temple ເປີດໃຊ້
     if ($isMultiTemple && $currentTempleId) {
         // ກວດສອບວ່າລາຍການນີ້ເປັນຂອງວັດນີ້ບໍ່
@@ -56,10 +65,10 @@ if ($record) {
             $canDelete = true;
         }
     }
-    
+
     if ($canDelete) {
         try {
-            // ⚠️ ລຶບພ້ອມກວດສອບ temple_id ອີກຄັ້ງເພື່ອຄວາມປອດໄພ
+            // ລຶບພ້ອມກວດສອບ temple_id ອີກຄັ້ງເພື່ອຄວາມປອດໄພ
             if ($isMultiTemple && $currentTempleId) {
                 $stmt = $db->prepare("DELETE FROM expense WHERE id = :id AND temple_id = :temple_id");
                 $stmt->execute([':id' => $id, ':temple_id' => $currentTempleId]);
@@ -67,16 +76,17 @@ if ($record) {
                 $stmt = $db->prepare("DELETE FROM expense WHERE id = :id");
                 $stmt->execute([':id' => $id]);
             }
-            
+
             if ($stmt->rowCount() > 0) {
                 // ບັນທຶກ audit log
                 logAudit($_SESSION['user_id'], 'DELETE', 'expense', $id, $record, null);
-                setFlashMessage('ລຶບລາຍຈ່າຍສຳເລັດແລ້ວ ✓', 'success');
+                setFlashMessage('ລຶບລາຍຈ່າຍສຳເລັດແລ້ວ', 'success');
             } else {
                 setFlashMessage('ບໍ່ສາມາດລຶບຂໍ້ມູນໄດ້', 'error');
             }
         } catch (PDOException $e) {
-            setFlashMessage('ເກີດຂໍ້ຜິດພາດໃນການລຶບຂໍ້ມູນ: ' . $e->getMessage(), 'error');
+            setFlashMessage('ເກີດຂໍ້ຜິດພາດໃນການລຶບຂໍ້ມູນ', 'error');
+            error_log("Delete expense error: " . $e->getMessage());
         }
     } else {
         setFlashMessage('ທ່ານບໍ່ມີສິດລຶບຂໍ້ມູນນີ້', 'error');

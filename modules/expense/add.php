@@ -20,14 +20,19 @@ if ($isMultiTemple && function_exists('getCurrentTempleId')) {
 
 // ຖ້າເປັນ POST request, ປະມວນຜົນກ່ອນໂຫຼດ HTML
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    checkCSRF();
-    
+    // ກວດສອບ CSRF Token
+    if (!checkCSRF()) {
+        setFlashMessage('ຂໍ້ຜິດພາດຄວາມປອດໄພ: CSRF Token ບໍ່ຖືກຕ້ອງ. ກະລຸນາລອງໃໝ່.', 'error');
+        header('Location: ' . BASE_URL . '/modules/expense/add.php');
+        exit();
+    }
+
     $date = $_POST['date'] ?? '';
     $description = trim($_POST['description'] ?? '');
     // ຮັບຄ່າຈາກ hidden input ທີ່ເປັນຕົວເລກທຳມະດາ
     $amount = $_POST['amount'] ?? '0';
     $category = trim($_POST['category'] ?? 'ທົ່ວໄປ');
-    
+
     $errors = [];
     
     if (empty($date)) {
@@ -94,14 +99,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ໂຫຼດ header ຫຼັງຈາກປະມວນຜົນ POST ແລ້ວ
 require_once __DIR__ . '/../../includes/header.php';
 
-// ດຶງໝວດໝູ່ລາຍຈ່າຍ (ຂອງວັດນີ້ເທົ່ານັ້ນ ຖ້າລະບົບ multi-temple ເປີດໃຊ້)
-if ($currentTempleId) {
-    $stmt = $db->prepare("SELECT * FROM expense_categories WHERE temple_id = ? ORDER BY name");
-    $stmt->execute([$currentTempleId]);
+// ດຶງໝວດໝູ່ລາຍຈ່າຍຕາມວັດ (ລວມໝວດໝູ່ທົ່ວໄປ)
+if ($currentTempleId && function_exists('getTempleExpenseCategories')) {
+    // ດຶງໝວດໝູ່ຂອງວັດນີ້ + ໝວດໝູ່ທົ່ວໄປ (temple_id IS NULL)
+    $categories = getTempleExpenseCategories($currentTempleId);
 } else {
+    // Fallback: ດຶງໝວດໝູ່ທັງໝົດ
     $stmt = $db->query("SELECT * FROM expense_categories ORDER BY name");
+    $categories = $stmt->fetchAll();
 }
-$categories = $stmt->fetchAll();
 
 ?>
 

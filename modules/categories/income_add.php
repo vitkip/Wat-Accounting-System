@@ -54,21 +54,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $db->prepare("SELECT id FROM income_categories WHERE name = ? AND temple_id = ?");
                 $stmt->execute([$name, $currentTempleId]);
             } else {
-                $stmt = $db->prepare("SELECT id FROM income_categories WHERE name = ?");
+                // ກວດສອບໝວດໝູ່ທົ່ວໄປ (temple_id IS NULL)
+                $stmt = $db->prepare("SELECT id FROM income_categories WHERE name = ? AND temple_id IS NULL");
                 $stmt->execute([$name]);
             }
-            
+
             if ($stmt->fetch()) {
                 setFlashMessage('ມີໝວດໝູ່ນີ້ຢູ່ແລ້ວ', 'error');
                 redirect('/modules/categories/income_add.php');
             }
 
-            // ເພີ່ມ temple_id ຖ້າມີ
+            // ເພີ່ມໝວດໝູ່ດ້ວຍ temple_id ທີ່ຖືກຕ້ອງ
             if ($currentTempleId) {
+                // ໝວດໝູ່ສະເພາະວັດ
                 $stmt = $db->prepare("INSERT INTO income_categories (temple_id, name, description) VALUES (?, ?, ?)");
                 $success = $stmt->execute([$currentTempleId, $name, $description]);
             } else {
-                $stmt = $db->prepare("INSERT INTO income_categories (name, description) VALUES (?, ?)");
+                // ໝວດໝູ່ທົ່ວໄປ (temple_id = NULL)
+                $stmt = $db->prepare("INSERT INTO income_categories (temple_id, name, description) VALUES (NULL, ?, ?)");
                 $success = $stmt->execute([$name, $description]);
             }
             

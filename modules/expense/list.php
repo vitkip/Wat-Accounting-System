@@ -89,6 +89,13 @@ $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// 🔍 DEBUG: ກວດສອບຂໍ້ມູນທີ່ດຶງມາ
+error_log("📊 Expense List - Total records fetched: " . count($records));
+if (!empty($records)) {
+    error_log("📊 First record ID: " . ($records[0]['id'] ?? 'NULL') . " (type: " . gettype($records[0]['id'] ?? null) . ")");
+    error_log("📊 First record data: " . json_encode($records[0]));
+}
+
 // Get Total Amount
 $stmt = $db->prepare("SELECT COALESCE(SUM(e.amount), 0) as total FROM expense e WHERE {$whereClause}");
 $stmt->execute($params);
@@ -220,12 +227,21 @@ require_once __DIR__ . '/../../includes/header.php';
                     </td>
                 </tr>
                 <?php else: ?>
-                    <?php foreach ($records as $record): 
-                        // ກວດສອບວ່າ ID ມີຄ່າບໍ່
-                        $recordId = intval($record['id'] ?? 0);
+                    <?php 
+                    $displayedCount = 0;
+                    foreach ($records as $record): 
+                        // 🔍 ກວດສອບວ່າ ID ມີຄ່າບໍ່
+                        $recordId = isset($record['id']) ? intval($record['id']) : 0;
+                        
+                        // DEBUG: ລົງ log ທຸກ record
+                        error_log("🔍 Processing expense record - ID from DB: " . ($record['id'] ?? 'NULL') . " → Converted: $recordId");
+                        
                         if ($recordId <= 0) {
+                            error_log("⚠️ WARNING: Skipping expense record with invalid ID: " . json_encode($record));
                             continue; // ຂ້າມແຖວທີ່ມີ ID ບໍ່ຖືກຕ້ອງ
                         }
+                        
+                        $displayedCount++;
                     ?>
                     <tr class="hover:bg-gray-50 transition duration-150">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -246,14 +262,21 @@ require_once __DIR__ . '/../../includes/header.php';
                             <?php echo e($record['full_name']); ?>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                            <a href="<?php echo BASE_URL; ?>/modules/expense/edit.php?id=<?php echo $recordId; ?>" 
+                            <a href="<?php echo BASE_URL; ?>/modules/expense/edit.php?id=<?php echo $recordId; ?>"
                                class="text-blue-600 hover:text-blue-900 mr-3">ແກ້ໄຂ</a>
-                            <a href="#" 
-                               onclick="confirmDeleteExpense(<?php echo $recordId; ?>); return false;"
-                               class="text-red-600 hover:text-red-900">ລຶບ</a>
+                            <form method="POST" action="<?php echo BASE_URL; ?>/modules/expense/delete.php" style="display:inline;"
+                                  onsubmit="return confirmDeleteExpense('<?php echo e($record['description']); ?>');">
+                                <input type="hidden" name="csrf_token" value="<?php echo generateCSRF(); ?>">
+                                <input type="hidden" name="id" value="<?php echo $recordId; ?>">
+                                <button type="submit" class="text-red-600 hover:text-red-900 bg-transparent border-0 cursor-pointer">ລຶບ</button>
+                            </form>
                         </td>
                     </tr>
                     <?php endforeach; ?>
+                    <?php 
+                    // DEBUG: ລາຍງານຈຳນວນທີ່ສະແດງ
+                    error_log("✅ Expense List - Displayed $displayedCount out of " . count($records) . " records");
+                    ?>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -287,25 +310,9 @@ require_once __DIR__ . '/../../includes/header.php';
 </div>
 
 <script>
-function confirmDeleteExpense(id) {
-    // ກວດສອບວ່າ ID ເປັນຕົວເລກທີ່ຖືກຕ້ອງ
-    console.log('Delete Expense ID:', id, 'Type:', typeof id);
-    
-    if (!id || isNaN(id) || id <= 0) {
-        Swal.fire({
-            icon: 'error',
-            title: 'ຂໍ້ຜິດພາດ!',
-            text: 'ID ບໍ່ຖືກຕ້ອງ: ' + id,
-            confirmButtonText: 'ຕົກລົງ'
-        });
-        return;
-    }
-    
-    confirmDelete('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບລາຍຈ່າຍນີ້?').then((result) => {
-        if (result.isConfirmed) {
-            window.location.href = '<?php echo BASE_URL; ?>/modules/expense/delete.php?id=' + parseInt(id);
-        }
-    });
+function confirmDeleteExpense(description) {
+    // Return true/false ສຳລັບ form onsubmit
+    return confirm('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບລາຍຈ່າຍນີ້?\n\n' + description);
 }
 </script>
 

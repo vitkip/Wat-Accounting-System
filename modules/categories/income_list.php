@@ -129,7 +129,7 @@ try {
             FROM income_categories ic
             LEFT JOIN income i ON ic.name = i.category AND i.temple_id = ic.temple_id
             WHERE ic.temple_id = ?
-            GROUP BY ic.id, ic.name, ic.description, ic.created_at
+            GROUP BY ic.id
             ORDER BY ic.name ASC
         ");
         $stmt->execute([$currentTempleId]);
@@ -141,7 +141,7 @@ try {
                    COALESCE(SUM(i.amount), 0) as total_amount
             FROM income_categories ic
             LEFT JOIN income i ON ic.name = i.category
-            GROUP BY ic.id, ic.name, ic.description, ic.created_at
+            GROUP BY ic.id
             ORDER BY ic.name ASC
         ");
     }
@@ -285,12 +285,16 @@ require_once '../../includes/header.php';
                                                 </svg>
                                             </div>
                                             <div class="ml-4">
-                                                <div class="text-sm font-bold text-gray-900"><?= htmlspecialchars($cat['name']) ?></div>
+                                                <div class="text-sm font-bold text-gray-900"><?= htmlspecialchars($cat['name'], ENT_QUOTES, 'UTF-8') ?></div>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-600">
-                                        <?= $cat['description'] ? htmlspecialchars($cat['description']) : '<span class="text-gray-400 italic">ບໍ່ມີຄຳອະທິບາຍ</span>' ?>
+                                        <?php if ($cat['description']): ?>
+                                            <?= htmlspecialchars($cat['description'], ENT_QUOTES, 'UTF-8') ?>
+                                        <?php else: ?>
+                                            <span class="text-gray-400 italic">ບໍ່ມີຄຳອະທິບາຍ</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-center">
                                         <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -319,11 +323,11 @@ require_once '../../includes/header.php';
                                                 error_log("⚠️ WARNING: Invalid category ID detected: " . var_export($cat, true));
                                             }
                                             ?>
-                                            <form method="POST" class="inline delete-category-form" data-category-id="<?= $categoryId ?>">
+                                            <form method="POST" class="inline delete-category-form" data-category-id="<?= $categoryId ?>" data-category-name="<?= htmlspecialchars($cat['name'], ENT_QUOTES, 'UTF-8') ?>">
                                                 <input type="hidden" name="csrf_token" value="<?= generateCSRF() ?>">
                                                 <input type="hidden" name="delete_id" value="<?= $categoryId ?>" id="delete_id_<?= $categoryId ?>">
                                                 <button type="button" 
-                                                        onclick="confirmDeleteCategory(this.form, '<?= addslashes($cat['name']) ?>', <?= $categoryId ?>)" 
+                                                        onclick="confirmDeleteCategory(this.form)" 
                                                         class="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition duration-200"
                                                         <?= $categoryId <= 0 ? 'disabled title="ID ບໍ່ຖືກຕ້ອງ"' : '' ?>>
                                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -352,13 +356,17 @@ require_once '../../includes/header.php';
 </div>
 
 <script>
-function confirmDeleteCategory(form, categoryName, categoryId) {
+function confirmDeleteCategory(form) {
+    // ✅ ອ່ານຂໍ້ມູນຈາກ data attributes
+    const categoryId = parseInt(form.getAttribute('data-category-id'));
+    const categoryName = form.getAttribute('data-category-name');
+    
     console.log('🗑️ Attempting to delete category:', categoryName, 'ID:', categoryId);
     console.log('📝 Form delete_id input:', form.querySelector('[name="delete_id"]'));
     console.log('📝 Form delete_id value:', form.querySelector('[name="delete_id"]').value);
     
     // ⚠️ ກວດສອບວ່າ categoryId ຖືກຕ້ອງ
-    if (!categoryId || categoryId <= 0) {
+    if (!categoryId || categoryId <= 0 || isNaN(categoryId)) {
         console.error('❌ Invalid categoryId:', categoryId);
         Swal.fire({
             icon: 'error',
@@ -376,6 +384,7 @@ function confirmDeleteCategory(form, categoryName, categoryId) {
         console.log('✅ Confirmed delete_id value:', deleteInput.value);
     } else {
         console.error('❌ delete_id input not found!');
+        return;
     }
     
     Swal.fire({

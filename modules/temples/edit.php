@@ -32,6 +32,13 @@ if (!$templeData) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // ກວດສອບ CSRF Token
+    if (!checkCSRF()) {
+        setFlashMessage('ຂໍ້ຜິດພາດຄວາມປອດໄພ: CSRF Token ບໍ່ຖືກຕ້ອງ. ກະລຸນາລອງໃໝ່.', 'error');
+        header('Location: ' . BASE_URL . '/modules/temples/edit.php?id=' . $templeId);
+        exit();
+    }
+
     // ຮັບຂໍ້ມູນຈາກ Form
     $templeName = trim($_POST['temple_name'] ?? '');
     $templeNameLao = trim($_POST['temple_name_lao'] ?? '');
@@ -144,6 +151,8 @@ if ($debugMode) {
 
 <!-- Form -->
 <form method="POST" class="space-y-6">
+    <?php echo generateCSRF(); ?>
+
     <!-- ຂໍ້ມູນວັດ -->
     <div class="bg-white rounded-2xl shadow-md p-6">
         <h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-3">

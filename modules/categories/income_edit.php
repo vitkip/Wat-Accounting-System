@@ -22,14 +22,27 @@ if (!isAdmin()) {
 $db = getDB();
 $id = $_GET['id'] ?? 0;
 
-// ດຶງຂໍ້ມູນໝວດໝູ່
+// ດຶງ temple_id ຂອງຜູ້ໃຊ້ປະຈຸບັນ
+$currentTempleId = null;
+$isMultiTemple = function_exists('isMultiTempleEnabled') && isMultiTempleEnabled();
+if ($isMultiTemple && function_exists('getCurrentTempleId')) {
+    $currentTempleId = getCurrentTempleId();
+}
+
+// ດຶງຂໍ້ມູນໝວດໝູ່ (ກວດສອບ temple_id ດ້ວຍ)
 try {
-    $stmt = $db->prepare("SELECT * FROM income_categories WHERE id = ?");
-    $stmt->execute([$id]);
+    if ($currentTempleId) {
+        // ກວດສອບວ່າ category ເປັນຂອງວັດນີ້
+        $stmt = $db->prepare("SELECT * FROM income_categories WHERE id = ? AND temple_id = ?");
+        $stmt->execute([$id, $currentTempleId]);
+    } else {
+        $stmt = $db->prepare("SELECT * FROM income_categories WHERE id = ?");
+        $stmt->execute([$id]);
+    }
     $category = $stmt->fetch();
-    
+
     if (!$category) {
-        setFlashMessage('ບໍ່ພົບໝວດໝູ່ທີ່ຕ້ອງການແກ້ໄຂ', 'error');
+        setFlashMessage('ບໍ່ພົບໝວດໝູ່ທີ່ຕ້ອງການແກ້ໄຂ ຫຼື ທ່ານບໍ່ມີສິດເຂົ້າເຖິງ', 'error');
         redirect('/modules/categories/income_list.php');
     }
 } catch (PDOException $e) {
@@ -57,9 +70,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         try {
-            // ກວດສອບວ່າມີຊື່ຊໍ້າບໍ່ (ຍົກເວັ້ນໂຕມັນເອງ)
-            $stmt = $db->prepare("SELECT id FROM income_categories WHERE name = ? AND id != ?");
-            $stmt->execute([$name, $id]);
+            // ກວດສອບວ່າມີຊື່ຊໍ້າບໍ່ (ພາຍໃນວັດດຽວກັນ, ຍົກເວັ້ນໂຕມັນເອງ)
+            if ($currentTempleId) {
+                $stmt = $db->prepare("SELECT id FROM income_categories WHERE name = ? AND temple_id = ? AND id != ?");
+                $stmt->execute([$name, $currentTempleId, $id]);
+            } else {
+                // ກວດສອບໝວດໝູ່ທົ່ວໄປ (temple_id IS NULL)
+                $stmt = $db->prepare("SELECT id FROM income_categories WHERE name = ? AND temple_id IS NULL AND id != ?");
+                $stmt->execute([$name, $id]);
+            }
+
             if ($stmt->fetch()) {
                 setFlashMessage('ມີໝວດໝູ່ນີ້ຢູ່ແລ້ວ', 'error');
                 redirect('/modules/categories/income_edit.php?id=' . $id);

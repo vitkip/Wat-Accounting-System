@@ -66,6 +66,9 @@ function getDB() {
             ];
             
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+            
+            // ປັບ SQL mode ເພື່ອແກ້ບັນຫາ GROUP BY
+            $pdo->exec("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
         } catch (PDOException $e) {
             die("ການເຊື່ອມຕໍ່ຖານຂໍ້ມູນຜິດພາດ: " . $e->getMessage());
         }
@@ -169,12 +172,19 @@ function formatMoney($amount) {
 
 // ຟັງຊັນຈັດຮູບແບບວັນທີ່
 function formatDate($date) {
+    // Whitelist ຮູບແບບວັນທີທີ່ອະນຸຍາດ (ປ້ອງກັນ format injection)
+    $allowedFormats = ['d/m/Y', 'Y-m-d', 'd-m-Y', 'm/d/Y', 'd F Y', 'd/m/Y H:i'];
+
     $format = 'd/m/Y'; // Default format
     if (function_exists('getCurrentTempleId') && function_exists('getTempleSetting')) {
         $currentTempleId = getCurrentTempleId();
         if ($currentTempleId) {
             // ດຶງຮູບແບບວັນທີຈາກການຕັ້ງຄ່າຂອງວັດ
-            $format = getTempleSetting($currentTempleId, 'date_format', 'd/m/Y');
+            $customFormat = getTempleSetting($currentTempleId, 'date_format', 'd/m/Y');
+            // ກວດສອບວ່າຢູ່ໃນ whitelist ຫຼືບໍ່
+            if (in_array($customFormat, $allowedFormats, true)) {
+                $format = $customFormat;
+            }
         }
     }
 

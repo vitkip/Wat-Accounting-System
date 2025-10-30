@@ -20,6 +20,13 @@ $errors = [];
 $suggestedCode = generateTempleCode();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // ກວດສອບ CSRF Token
+    if (!checkCSRF()) {
+        setFlashMessage('ຂໍ້ຜິດພາດຄວາມປອດໄພ: CSRF Token ບໍ່ຖືກຕ້ອງ. ກະລຸນາລອງໃໝ່.', 'error');
+        header('Location: ' . BASE_URL . '/modules/temples/add.php');
+        exit();
+    }
+
     // ຮັບຂໍ້ມູນຈາກ Form
     $templeCode = trim($_POST['temple_code'] ?? '');
     $templeName = trim($_POST['temple_name'] ?? '');
@@ -195,7 +202,8 @@ require_once __DIR__ . '/../../includes/header.php';
 
 <!-- Form -->
 <form method="POST" class="space-y-6">
-    
+    <?php echo generateCSRF(); ?>
+
     <!-- ຂໍ້ມູນວັດ -->
     <div class="bg-white rounded-2xl shadow-md p-6">
         <h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-3">
