@@ -202,7 +202,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
 <!-- Form -->
 <form method="POST" class="space-y-6">
-    <?php echo generateCSRF(); ?>
+    <?php echo csrfField(); ?>
 
     <!-- ຂໍ້ມູນວັດ -->
     <div class="bg-white rounded-2xl shadow-md p-6">

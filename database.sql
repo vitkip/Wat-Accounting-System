@@ -283,6 +283,45 @@ END //
 DELIMITER ;
 
 -- ============================================================================
+-- Migration Scripts for Production Compatibility
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- Fix: Add 'category' column to income/expense tables
+-- (For backwards compatibility with code that uses VARCHAR category field)
+-- ----------------------------------------------------------------------------
+
+-- Add category column to income table (if not exists)
+ALTER TABLE income
+ADD COLUMN IF NOT EXISTS category VARCHAR(100) NULL AFTER amount,
+ADD INDEX IF NOT EXISTS idx_income_category (category);
+
+-- Add category column to expense table (if not exists)
+ALTER TABLE expense
+ADD COLUMN IF NOT EXISTS category VARCHAR(100) NULL AFTER amount,
+ADD INDEX IF NOT EXISTS idx_expense_category (category);
+
+-- Update existing records to populate category field from category_id
+UPDATE income i
+LEFT JOIN income_categories ic ON i.category_id = ic.id
+SET i.category = ic.name
+WHERE i.category IS NULL OR i.category = '';
+
+UPDATE expense e
+LEFT JOIN expense_categories ec ON e.category_id = ec.id
+SET e.category = ec.name
+WHERE e.category IS NULL OR e.category = '';
+
+-- ----------------------------------------------------------------------------
+-- Optional: Add email column to users table
+-- (For future use, not required for current system)
+-- ----------------------------------------------------------------------------
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS email VARCHAR(100) NULL AFTER full_name,
+ADD INDEX IF NOT EXISTS idx_users_email (email);
+
+-- ============================================================================
 -- End of script
 -- ============================================================================
 SELECT 'Database schema created/updated successfully for Multi-Temple System. 🎉' as status;
+SELECT 'Migration scripts applied. System ready for production deployment. ✅' as migration_status;

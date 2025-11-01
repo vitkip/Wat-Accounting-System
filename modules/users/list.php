@@ -20,30 +20,30 @@ $isMultiTemple = isMultiTempleEnabled();
 // ດຶງຂໍ້ມູນຜູ້ໃຊ້ຕາມສິດ
 if ($isSuperAdmin) {
     // Super admin ເຫັນຜູ້ໃຊ້ທັງໝົດ
-    $sql = "SELECT u.id, u.username, u.full_name, u.email, u.role, u.is_super_admin, 
+    $sql = "SELECT u.id, u.username, u.full_name, u.email, u.role, u.is_super_admin,
                    u.temple_id, u.created_at, u.updated_at,
-                   t.temple_name, t.temple_name_lao 
-            FROM users u 
-            LEFT JOIN temples t ON u.temple_id = t.id 
+                   t.temple_name, t.temple_name_lao
+            FROM users u
+            LEFT JOIN temples t ON u.temple_id = t.id
             ORDER BY u.created_at DESC";
     $stmt = $db->query($sql);
 } else {
     // Admin ທົ່ວໄປເຫັນສະເພາະຜູ້ໃຊ້ໃນວັດຂອງຕົນ
     if ($isMultiTemple && $currentTempleId) {
-        $sql = "SELECT u.id, u.username, u.full_name, u.email, u.role, u.is_super_admin, 
+        $sql = "SELECT u.id, u.username, u.full_name, u.email, u.role, u.is_super_admin,
                        u.temple_id, u.created_at, u.updated_at,
-                       t.temple_name, t.temple_name_lao 
-                FROM users u 
-                LEFT JOIN temples t ON u.temple_id = t.id 
-                WHERE u.temple_id = :temple_id 
+                       t.temple_name, t.temple_name_lao
+                FROM users u
+                LEFT JOIN temples t ON u.temple_id = t.id
+                WHERE u.temple_id = :temple_id
                 ORDER BY u.created_at DESC";
         $stmt = $db->prepare($sql);
         $stmt->execute([':temple_id' => $currentTempleId]);
     } else {
-        $sql = "SELECT u.id, u.username, u.full_name, u.email, u.role, u.is_super_admin, 
+        $sql = "SELECT u.id, u.username, u.full_name, u.email, u.role, u.is_super_admin,
                        u.temple_id, u.created_at, u.updated_at,
-                       NULL as temple_name, NULL as temple_name_lao 
-                FROM users u 
+                       NULL as temple_name, NULL as temple_name_lao
+                FROM users u
                 ORDER BY u.created_at DESC";
         $stmt = $db->query($sql);
     }

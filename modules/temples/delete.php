@@ -135,7 +135,7 @@ require_once __DIR__ . '/../../includes/header.php';
     </div>
     
     <form method="POST" class="space-y-4">
-        <?php echo generateCSRFToken(); ?>
+        <?php echo csrfField(); ?>
         
         <div class="flex justify-center space-x-4">
             <a href="index.php" 

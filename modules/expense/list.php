@@ -71,9 +71,9 @@ $totalRecords = $stmt->fetch()['total'];
 $totalPages = ceil($totalRecords / $perPage);
 
 // Get Records - ລະບຸຄັອລຳຢ່າງຊັດເຈນເພື່ອປ້ອງກັນ ambiguous
-$sql = "SELECT e.id AS id, e.date, e.description, e.category, e.amount, 
+$sql = "SELECT e.id, e.date, e.description, e.category, e.amount,
                e.created_by, e.temple_id, e.created_at, e.updated_at,
-               u.full_name 
+               u.full_name
         FROM expense e
         LEFT JOIN users u ON e.created_by = u.id
         WHERE {$whereClause}
@@ -227,20 +227,15 @@ require_once __DIR__ . '/../../includes/header.php';
                     </td>
                 </tr>
                 <?php else: ?>
-                    <?php 
+                    <?php
                     $displayedCount = 0;
-                    foreach ($records as $record): 
-                        // 🔍 ກວດສອບວ່າ ID ມີຄ່າບໍ່
-                        $recordId = isset($record['id']) ? intval($record['id']) : 0;
-                        
+                    foreach ($records as $record):
+                        // ດຶງ ID ຈາກ record (ຖ້າບໍ່ມີໃຫ້ໃຊ້ 0)
+                        $recordId = intval($record['id'] ?? 0);
+
                         // DEBUG: ລົງ log ທຸກ record
-                        error_log("🔍 Processing expense record - ID from DB: " . ($record['id'] ?? 'NULL') . " → Converted: $recordId");
-                        
-                        if ($recordId <= 0) {
-                            error_log("⚠️ WARNING: Skipping expense record with invalid ID: " . json_encode($record));
-                            continue; // ຂ້າມແຖວທີ່ມີ ID ບໍ່ຖືກຕ້ອງ
-                        }
-                        
+                        error_log("🔍 Expense record - ID: {$recordId}, Date: {$record['date']}, Amount: {$record['amount']}");
+
                         $displayedCount++;
                     ?>
                     <tr class="hover:bg-gray-50 transition duration-150">

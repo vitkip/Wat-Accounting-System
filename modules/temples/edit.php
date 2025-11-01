@@ -108,7 +108,7 @@ if ($debugMode) {
     echo 'Temple Found: ✅ Yes<br>';
     echo 'Temple Code: ' . ($templeData['temple_code'] ?? 'N/A') . '<br>';
     echo 'Temple Name Lao: ' . ($templeData['temple_name_lao'] ?? 'N/A') . '<br>';
-    echo '<details><summary>Full Data (click to expand)</summary><pre style="max-height: 300px; overflow: auto;">' . print_r($temple, true) . '</pre></details>';
+    echo '<details><summary>Full Data (click to expand)</summary><pre style="max-height: 300px; overflow: auto;">' . print_r($templeData, true) . '</pre></details>';
     echo '</div>';
 }
 ?>
@@ -151,7 +151,7 @@ if ($debugMode) {
 
 <!-- Form -->
 <form method="POST" class="space-y-6">
-    <?php echo generateCSRF(); ?>
+    <?php echo csrfField(); ?>
 
     <!-- ຂໍ້ມູນວັດ -->
     <div class="bg-white rounded-2xl shadow-md p-6">
